@@ -11,7 +11,8 @@ TYPEDEF = re.compile(r"\s*typedef\s+(.*)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*;\s*", fla
 DEFINE = re.compile(r"\s*#\s*define\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*(.*)\s*$\s*", flags=re.MULTILINE)
 
 options: dict[str, bool] = {
-    "remove-inline": False
+    "remove-inline": False,
+    "mangle-groups": False,
 }
 
 def option(opt: Any):
@@ -111,7 +112,6 @@ COMMANDS = {
 
 def run_cmd(cmd, values):
     params = cmd.split(' ')
-    print(f"CMD {params}")
     if params[0] in COMMANDS:
         return COMMANDS[params[0]](params, values)
     return ""
@@ -164,23 +164,34 @@ def parse_mangles(args, types, source):
             return
 
         pattern = json.loads(m.group(2))
-        define = DEFINE.search(source, m.end())
-        if define is None:
-            print(f"MANGLE directive should annotate a #define at {lineo(m, source)}", file=stderr)
-            return
 
-        erase_regions.append((m.start(), define.end()))
+        offset = m.end()
+        while True:
 
-        subst_target = define.group(1)
-        subst_base = define.group(2)
+            define = DEFINE.search(source, offset)
+            if define is None:
+                if offset != 0 and is_set("mangle-groups"):
+                    break
 
-        subst_value = expand_env(pattern, {
-            "1": subst_base,
-            "<": subst_target,
-            **types,
-        })
+                print(f"MANGLE directive should annotate a #define at {lineo(m, source)}", file=stderr)
+                return
 
-        mangles[subst_target] = subst_value
+            subst_target = define.group(1)
+            subst_base = define.group(2)
+
+            subst_value = expand_env(pattern, {
+                "1": subst_base,
+                "<": subst_target,
+                **types,
+            })
+
+            mangles[subst_target] = subst_value
+ 
+            offset = define.end()
+            if not is_set("mangle-groups"):
+                break
+
+        erase_regions.append((m.start(), offset))
 
     read_directives(source, parser)
     return erase_all(source, erase_regions), mangles

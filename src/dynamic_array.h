@@ -1,4 +1,5 @@
 //! Template OPTION "remove-inline"
+//! Template OPTION "mangle-groups"
 
 //! Template H "dynamic_array_${T}.h"
 //! Template GUARD "DYNAMIC_ARRAY_$(toupper ${T})_H_"
@@ -13,23 +14,11 @@ typedef int T;
 
 //! Template MANGLE "${1}_${T.short}"
 #define dynamic_array dynamic_array
-
-//! Template MANGLE "${1}_${T.short}"
 #define reserve da_reserve
-
-//! Template MANGLE "${1}_${T.short}"
 #define append da_append
-
-//! Template MANGLE "${1}_${T.short}"
 #define insert da_insert
-
-//! Template MANGLE "${1}_${T.short}"
 #define insert_range da_insert_range
-
-//! Template MANGLE "${1}_${T.short}"
 #define remove_back da_remove_back
-
-//! Template MANGLE "${1}_${T.short}"
 #define remove da_remove
 
 typedef struct dynamic_array {
