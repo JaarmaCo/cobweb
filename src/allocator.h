@@ -33,6 +33,7 @@ typedef struct allocation {
    * Memory alignment of the allocation.
    */
   size_t alignment;
+
 } allocation_t;
 
 struct allocator;
@@ -118,6 +119,7 @@ typedef struct debug_allocator {
    * Callback used to report each memory allocation.
    */
   allocation_debug_function_t callback;
+
 } debug_allocator_t;
 
 /**
@@ -149,7 +151,8 @@ debug_allocator_t trace_free_balance_allocator(allocator_t *upstream,
 /**
  * Allocate a new block of memory.
  *
- * @param allocator Memory allocator that performs the allocation.
+ * @param allocator Memory allocator that performs the allocation, or NULL to
+ *                  use malloc(size_t).
  * @param size Requested size of the allocation.
  * @param alignment Alignment of the memory allocation.
  * @return A contiguous memory region of at least {@param size} bytes, or NULL.
@@ -172,7 +175,8 @@ void *allocator_new(allocator_t *allocator, size_t size, size_t alignment);
  * })
  * ```
  *
- * @param allocator Allocator that performs the allocation.
+ * @param allocator Allocator that performs the allocation, or NULL to use
+ *                  realloc(void *, size_t).
  * @param hint Pointer to an existing block of memory. May be NULL if old_size
  *             is 0.
  * @param old_size Size of the existing allocation, or 0.
@@ -189,7 +193,8 @@ void *allocator_resize(allocator_t *allocator, void *hint, size_t old_size,
  * Releases a block of memory that was previously allocated using the provided
  * allocator.
  *
- * @param allocator Allocator used to free the memory block.
+ * @param allocator Allocator used to free the memory block, or NULL to use
+ *                  free(void *).
  * @param memory A pointer that was returned by a previous call to the memory
  *               allocator.
  * @param size The value of the new_size parameter that was passed to the

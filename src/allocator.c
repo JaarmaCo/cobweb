@@ -66,7 +66,7 @@ void *allocator_new(allocator_t *allocator, size_t size, size_t alignment) {
       .new_size = size,
       .alignment = alignment,
   };
-  return allocator->allocate(allocator, &arg);
+  return (allocator ? allocator->allocate : malloc_allocate)(allocator, &arg);
 }
 
 void *allocator_resize(allocator_t *allocator, void *hint, size_t old_size,
@@ -77,7 +77,7 @@ void *allocator_resize(allocator_t *allocator, void *hint, size_t old_size,
       .new_size = new_size,
       .alignment = alignment,
   };
-  return allocator->allocate(allocator, &arg);
+  return (allocator ? allocator->allocate : malloc_allocate)(allocator, &arg);
 }
 
 void allocator_release(allocator_t *allocator, void *memory, size_t size,
@@ -88,5 +88,5 @@ void allocator_release(allocator_t *allocator, void *memory, size_t size,
       .new_size = 0,
       .alignment = alignment,
   };
-  allocator->allocate(allocator, &arg);
+  (allocator ? allocator->allocate : malloc_allocate)(allocator, &arg);
 }
