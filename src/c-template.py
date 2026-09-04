@@ -10,6 +10,22 @@ DIR = re.compile(r"//\s*!\s*Template\s+([A-Z]+)\s+(.*)")
 TYPEDEF = re.compile(r"\s*typedef\s+(.*)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*;\s*", flags=re.MULTILINE)
 DEFINE = re.compile(r"\s*#\s*define\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*(.*)\s*$\s*", flags=re.MULTILINE)
 
+options: dict[str, bool] = {
+    "remove-inline": False
+}
+
+def option(opt: Any):
+    if isinstance(opt, dict):
+        for key, value in opt.items():
+            options[key] = value
+    elif isinstance(opt, str):
+        options[opt] = True
+    else:
+        print(f"Ignoring unknown option {opt}", file=stderr)
+
+def is_set(opt: str) -> bool:
+    return opt in options and options[opt]
+
 def read_directives(source, dir_callback):
     i = 0
     while i < len(source):
@@ -47,6 +63,10 @@ def parse_types(args, source):
     erase_regions = []
 
     def parser(m: re.Match[str]):
+        if m.group(1) == 'OPTION':
+            option(json.loads(m.group(2)))
+            return
+
         if m.group(1) != 'TYPE':
             return
  
@@ -320,6 +340,34 @@ def add_includes(results: SimpleNamespace, types: dict[str, Any], name: str, s: 
         s = s[:m.start()] + f'#include {include_path}\n' + s[m.end():]
     return s
 
+def remove_inline(source: str) -> str:
+
+    result = ""
+    removed = False
+
+    while True:
+
+        kind, tok, next = token(source)
+        source = next
+
+        if removed and kind == "WS":
+            removed = False
+            continue
+
+        removed = False
+
+        if kind == "CK" and tok == "inline":
+            removed = True
+            continue
+
+        if tok == "":
+            result += next
+            break
+
+        result += tok
+
+    return result
+
 def process(args):
     with open(args.file) as f:
         src = f.read()
@@ -337,6 +385,10 @@ def process(args):
 
     if results.source is not None:
         results.source = add_includes(results, types, results.source_name, results.source)
+
+        if is_set("remove-inline"):
+            results.source = remove_inline(results.source)
+
         print(f'#file "{results.source_name}"')
         indent_print(results.source)
 
