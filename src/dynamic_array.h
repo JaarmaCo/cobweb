@@ -27,17 +27,38 @@ typedef struct dynamic_array {
   size_t capacity;
 } dynamic_array;
 
+/**
+ * Reserve space for at least {@param size} elements in the array.
+ */
 size_t reserve(dynamic_array *array, size_t size);
 
+/**
+ * Append an element to the end of the array.
+ */
 T *append(dynamic_array *array, T item);
 
+/**
+ * Insert an element at a specific index by extending the array and
+ * shifting all elements to the right.
+ */
 T *insert(dynamic_array *array, size_t index, T item);
 
+/**
+ * Insert elements at a specific index by extending the array and
+ * shifting all elements to the right.
+ */
 T *insert_range(dynamic_array *array, size_t index, size_t count,
                 const T *items);
 
+/**
+ * Remove the last element of the array.
+ */
 T remove_back(dynamic_array *array, size_t count);
 
+/**
+ * Erase a range of elements in an array by first shifting elements
+ * to the left, and then shrinking the array.
+ */
 void remove(dynamic_array *array, size_t index, size_t count);
 
 //! Template C "dynamic_array_${T}.c"
