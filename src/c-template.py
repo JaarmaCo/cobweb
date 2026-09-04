@@ -4,6 +4,7 @@ import re
 from sys import stderr, stdin
 from types import SimpleNamespace
 from typing import Any
+from warnings import simplefilter
 
 DIR = re.compile(r"//\s*!\s*Template\s+([A-Z]+)\s+(.*)")
 TYPEDEF = re.compile(r"\s*typedef\s+(.*)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*;\s*", flags=re.MULTILINE)
@@ -90,6 +91,7 @@ COMMANDS = {
 
 def run_cmd(cmd, values):
     params = cmd.split(' ')
+    print(f"CMD {params}")
     if params[0] in COMMANDS:
         return COMMANDS[params[0]](params, values)
     return ""
@@ -119,7 +121,10 @@ def expand_env(source, values):
                     value = value[part]
                 else:
                     break
-            subst += value
+            if isinstance(value, str):
+                subst += value
+            elif "typename" in value:
+                subst += value["typename"]
             i = end
         elif source[i + 1] == '(':
             end = seek_paren(source, i + 1, '(', ')')
@@ -189,7 +194,6 @@ def token(source: str) -> tuple[str, str, str]:
     for kind, pattern in PATTERNS:
         m = re.match(pattern, source)
         if m is not None:
-            print(f"Token {kind=} {m.group(0)}")
             return kind, m.group(0), source[m.end():]
 
     return "NONE", "", source
@@ -224,6 +228,98 @@ def str_types(types: dict[str, Any]) -> dict[str, str]:
 
     return results
 
+HEADER = re.compile(r"\s*//\s*!\s*Template\s+H\s+(.*)\s*$\s*", flags=re.MULTILINE)
+SOURCE = re.compile(r"\s*//\s*!\s*Template\s+C\s+(.*)\s*$\s*", flags=re.MULTILINE)
+GUARD = re.compile(r"\s*//\s*!\s*Template\s+GUARD\s+(.*)\s*$\s*", flags=re.MULTILINE)
+INCLUDE = re.compile(r"\s*//\s*!\s*Template\s+INCLUDE\s+(.*)\s*$\s*", flags=re.MULTILINE)
+
+def seek_header(args, data, types):
+
+    results = SimpleNamespace()
+    results.header_name = args.out + ".h"
+    results.source_name = args.out + ".c"
+    results.header = data
+    results.source = None
+
+    m = HEADER.search(data)
+    if m is None:
+        return results
+
+    env = {
+        '1': args.out,
+        '<': args.file,
+        **types,
+    }
+
+    results.header_name = expand_env(json.loads(m.group(1)), env)
+
+    src = SOURCE.search(data, m.end())
+    if src is None:
+        results.header = data[m.end():]
+        return results
+
+    results.source_name = expand_env(json.loads(src.group(1)), env)
+
+    results.header = data[m.end():src.start()]
+    results.source = data[src.end():]
+
+    return results
+
+def indent_print(s: str, indent: str = "    "):
+    for line in s.splitlines():
+        print(indent + line)
+
+def macro_name(s: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_]", "_", s).upper()
+
+def add_header_guard(name: str, results: SimpleNamespace, types, s: str) -> str:
+
+    m = GUARD.search(s)
+    if m is not None:
+        guard_macro = expand_env(json.loads(m.group(1)), {
+            '<': name,
+            **types,
+            **namespace_to_dict(results),
+        })
+        s = s[:m.start()] + s[m.end():]
+    else:
+        guard_macro = macro_name(name)
+
+    return f"""
+#if !defined({guard_macro})
+#define {guard_macro} 1
+
+{s}
+
+#endif // !defined({guard_macro})"""
+
+def namespace_to_dict(ns: Any) -> dict:
+    if isinstance(ns, dict):
+        return {
+            key: value if isinstance(value, str) else namespace_to_dict(value)
+                for key, value in ns.items()
+        }
+    else:
+        return {
+            key: value if isinstance(value, str) else namespace_to_dict(value)
+                for key, value in vars(ns).items()
+        }
+
+def add_includes(results: SimpleNamespace, types: dict[str, Any], name: str, s: str) -> str:
+    while True:
+        m = INCLUDE.search(s)
+        if m is None:
+            break
+
+        include_path = expand_env(m.group(1), {
+            '<': name,
+            **types,
+            **namespace_to_dict(results),
+        })
+
+        s = s[:m.start()] + f'#include {include_path}\n' + s[m.end():]
+    return s
+
 def process(args):
     with open(args.file) as f:
         src = f.read()
@@ -231,7 +327,18 @@ def process(args):
     data, mangles = parse_mangles(args, types, data)
     data = substitute(data, str_types(types))
     data = substitute(data, mangles)
-    print(data)
+
+    results = seek_header(args, data, types)
+    results.header = add_header_guard(args, results, types, results.header)
+    results.header = add_includes(results, types, results.header_name, results.header)
+
+    print(f'#file "{results.header_name}"')
+    indent_print(results.header)
+
+    if results.source is not None:
+        results.source = add_includes(results, types, results.source_name, results.source)
+        print(f'#file "{results.source_name}"')
+        indent_print(results.source)
 
 def main():
     parser = argparse.ArgumentParser(

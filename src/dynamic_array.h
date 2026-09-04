@@ -1,5 +1,5 @@
-//! Template H "dynamic_array_${T.short}.h"
-//! Template GUARD "DYNAMIC_ARRAY_$(toupper ${T.short})_H_"
+//! Template H "dynamic_array_${T}.h"
+//! Template GUARD "DYNAMIC_ARRAY_$(toupper ${T})_H_"
 
 #include <assert.h>
 #include <stdio.h>
@@ -49,8 +49,8 @@ T remove_back(dynamic_array *array, size_t count);
 
 void remove(dynamic_array *array, size_t index, size_t count);
 
-//! Template C "dynamic_array_${T.short}.c"
-//! Template INCLUDE "dynamic_array_${T.short}.h"
+//! Template C "dynamic_array_${T}.c"
+//! Template INCLUDE "dynamic_array_${T}.h"
 
 size_t reserve(dynamic_array *array, size_t size) {
   assert(NULL != array);
