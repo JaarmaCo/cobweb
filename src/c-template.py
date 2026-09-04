@@ -2,75 +2,24 @@ import re
 import json
 import argparse
 import subprocess
-from typing import Any
+from typing import Any, Callable, Iterable
 
-DIRECTIVE = re.compile(r"\s*//\s*!\s*Template\s+([A-Z]+)\s+(.*)\s*")
-
-def preprocess(args):
-
-    cpp = args.preprocessor
-
-    pp = subprocess.call([
-        cpp,
-        "-CC", # Keep comments
-        "-P", # Discard line numbers
-        *args.include,
-        *args.define,
-        *args.pp_arg,
-        args.file
-    ])
-    print(pp)
-
+DIRECTIVE = re.compile(r"^\s*//\s*!\s*Template\s+([A-Z]+)\s+(.*)\s*$", flags=re.MULTILINE)
 ATTRIBUTES = [ "TYPE", "MANGLE" ]
 HIDDEN = [ "TYPE", "MANGLE" ]
+FILE_DIRECTIVES = [ "C", "H" ]
 
-def parse_directives(args) -> tuple[str, dict[str, list[Any]], dict[str, list[str]]]:
-    values: dict[str, list[Any]] = {}
-    elements: dict[str, list[str]] = {}
-    source: str = ""
-    with open(args.file) as f:
+def process_directives(source: str, processor: Callable[[str, Any, re.Match[str], str], str]) -> str:
+    i = 0
+    while True:
+        i = i + 1
 
-        attributed = None
-        hidden = False
-
-        for line in f:
-            match = DIRECTIVE.match(line)
-
-            if match is None:
-
-                if hidden:
-                    if line.strip() == "":
-                        hidden = False
-                        continue
-                    hidden = False
-
-                if attributed is None:
-                    source += line
-                    continue
-
-                if attributed not in elements:
-                    elements[attributed] = []
-
-                if attributed not in HIDDEN:
-                    source += line
-
-                elements[attributed].append(line.strip())
-                attributed = None
-                hidden = True
-                continue
-
-            key = match.group(1)
-            val = json.loads(match.group(2))
-
-            if key not in values:
-                values[key] = []
-
-            if key in ATTRIBUTES:
-                attributed = key
-
-            values[key].append(val)
-
-    return source, values, elements
+        m = DIRECTIVE.search(source)
+        if m is None:
+            break
+        next = processor(m.group(1), json.loads(m.group(2)), m, source)
+        source = next
+    return source
 
 TYPEDEF = re.compile(r"typedef\s+(.*)\s+([a-zA-Z_][a-zA-Z_0-9]*)\s*;")
 
@@ -202,6 +151,55 @@ def substitute(source: str, type_substitutions: dict[str, Any], mangles: dict[st
 
     return result
 
+def remove_directive(match: re.Match[str], source: str) -> str:
+    return source[:match.start()] + source[match.end():]
+
+ATTRIBUTABLE = re.compile(r"(^\s*typedef\s+.+\s+[a-zA-Z_][a-zA-Z0-9_]*;$)|(^\s*#\s*define\s*[a-zA-Z_][a-zA-Z_0-9]+\s+.*$)", flags=re.MULTILINE)
+
+def process(args, input: str) -> str:
+
+    directives = {}
+    elements = {}
+
+    def processor(directive: str, arguments: Any, match: re.Match[str], source: str) -> str:
+
+        mstr = match.group(0).strip()
+
+        if directive not in directives:
+            directives[directive] = []
+
+        directives[directive].append(arguments)
+
+        if directive in ATTRIBUTES:
+
+            attributed = ATTRIBUTABLE.search(source[match.end():])
+
+            if attributed is None:
+                print(f"Ignoring directive: {directive} {arguments}")
+                return remove_directive(match, source)
+
+            if directive not in elements:
+                elements[directive] = []
+
+            astr = attributed.group(0).strip()
+
+            elements[directive].append(astr)
+
+            if directive in HIDDEN:
+                return source[:match.start()] + source[match.end() + attributed.end():]
+
+        return remove_directive(match, source)
+
+    source = process_directives(input, processor)
+
+    type_params = get_type_parameters(args, directives, elements)
+
+    type_substititions = map_type_parameters(args, type_params)
+
+    mangles = get_mangle_parameters(args, type_substititions, directives, elements)
+
+    return substitute(source, type_substititions, mangles)
+
 def main():
     parser = argparse.ArgumentParser(
         prog="c-template",
@@ -229,10 +227,10 @@ def main():
                         default="cpp",
                         help="Override the default C preprocessor command")
     parser.add_argument("-o",
-                        "--output-file",
+                        "--output-directory",
                         dest="out",
-                        default="/dev/stdout",
-                        help="Specify the destination of the generated source file")
+                        default=".",
+                        help="Specify the directory of the generated source file(s)")
     parser.add_argument("-i",
                         "--input-file",
                         dest="file",
@@ -254,13 +252,9 @@ def main():
                 args.types.append(t)
 
     try:
-        source, directives, elements = parse_directives(args)
-        type_params = get_type_parameters(args, directives, elements)
-        type_substititions = map_type_parameters(args, type_params)
-        mangles = get_mangle_parameters(args, type_substititions, directives, elements)
-        with open(args.out, "w") as f:
-            f.write(substitute(source, type_substititions, mangles))
-
+        with open(args.file) as f:
+            data = f.read()
+        print(process(args, data))
     except KeyboardInterrupt:
         exit(1)
 if __name__ == "__main__":

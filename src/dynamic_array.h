@@ -1,4 +1,5 @@
-#pragma once
+//! Template H "dynamic_array_${T.short}.h"
+//! Template GUARD "DYNAMIC_ARRAY_$(toupper ${T.short})_H_"
 
 #include <assert.h>
 #include <stdio.h>
@@ -35,7 +36,23 @@ typedef struct dynamic_array {
   size_t capacity;
 } dynamic_array;
 
-inline size_t reserve(dynamic_array *array, size_t size) {
+size_t reserve(dynamic_array *array, size_t size);
+
+T *append(dynamic_array *array, T item);
+
+T *insert(dynamic_array *array, size_t index, T item);
+
+T *insert_range(dynamic_array *array, size_t index, size_t count,
+                const T *items);
+
+T remove_back(dynamic_array *array, size_t count);
+
+void remove(dynamic_array *array, size_t index, size_t count);
+
+//! Template C "dynamic_array_${T.short}.c"
+//! Template INCLUDE "dynamic_array_${T.short}.h"
+
+size_t reserve(dynamic_array *array, size_t size) {
   assert(NULL != array);
   assert(array->count >= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
@@ -58,7 +75,7 @@ inline size_t reserve(dynamic_array *array, size_t size) {
   return size;
 }
 
-inline T *append(dynamic_array *array, T item) {
+T *append(dynamic_array *array, T item) {
   assert(NULL != array);
   assert(array->count >= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
@@ -72,7 +89,7 @@ inline T *append(dynamic_array *array, T item) {
   return &(array->items[array->count++] = item);
 }
 
-inline T remove_back(dynamic_array *array, size_t count) {
+T remove_back(dynamic_array *array, size_t count) {
   assert(NULL != array);
   assert(array->count >= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
@@ -81,7 +98,7 @@ inline T remove_back(dynamic_array *array, size_t count) {
   return array->items[array->count -= count];
 }
 
-inline void remove(dynamic_array *array, size_t index, size_t count) {
+void remove(dynamic_array *array, size_t index, size_t count) {
   assert(NULL != array);
   assert(array->count >= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
@@ -93,8 +110,8 @@ inline void remove(dynamic_array *array, size_t index, size_t count) {
   remove_back(array, count);
 }
 
-inline T *insert_range(dynamic_array *array, size_t index, size_t count,
-                       const T *items) {
+T *insert_range(dynamic_array *array, size_t index, size_t count,
+                const T *items) {
   assert(NULL != array);
   assert(array->count >= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
@@ -113,6 +130,6 @@ inline T *insert_range(dynamic_array *array, size_t index, size_t count,
   return array->items + index;
 }
 
-inline T *insert(dynamic_array *array, size_t index, T item) {
+T *insert(dynamic_array *array, size_t index, T item) {
   return insert_range(array, index, 1, &item);
 }
