@@ -1,6 +1,7 @@
 import argparse
 import json
 import re
+import copy
 from sys import stderr, stdin
 from types import SimpleNamespace
 from typing import Any
@@ -391,8 +392,9 @@ def process(args):
     results.header = add_header_guard(args, results, types, results.header)
     results.header = add_includes(results, types, results.header_name, results.header)
 
-    print(f'#file "{results.header_name}"')
-    indent_print(results.header)
+    with open(f"{args.out}/{results.header_name}", "w") as f:
+        print(f"Wrote {args.out}/{results.header_name}", file=stderr)
+        f.write(results.header)
 
     if results.source is not None:
         results.source = add_includes(results, types, results.source_name, results.source)
@@ -400,8 +402,9 @@ def process(args):
         if is_set("remove-inline"):
             results.source = remove_inline(results.source)
 
-        print(f'#file "{results.source_name}"')
-        indent_print(results.source)
+        with open(f"{args.out}/{results.source_name}", "w") as f:
+            print(f"Wrote {args.out}/{results.source_name}", file=stderr)
+            f.write(results.source)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -455,6 +458,14 @@ def main():
                 args.types.append(t)
 
     try:
+
+        if isinstance(args.types, list) and len(args.types) > 0 and isinstance(args.types[0], list):
+            for types in args.types:
+                new_args = copy.deepcopy(args)
+                new_args.types = types
+                process(new_args)
+            exit(0)
+
         process(args)
     except KeyboardInterrupt:
         exit(1)

@@ -18,10 +18,13 @@ typedef int T;
 #define dynamic_array dynamic_array
 #define reserve da_reserve
 #define append da_append
+#define append_range da_append_range
 #define insert da_insert
 #define insert_range da_insert_range
+#define remove_back_range da_remove_back_range
 #define remove_back da_remove_back
 #define remove da_remove
+#define remove_range da_remove_range
 
 /**
  * Templated dynamic array implementation that uses a custom allocator for
@@ -76,6 +79,14 @@ size_t reserve(dynamic_array *array, size_t size);
 T *append(dynamic_array *array, T item);
 
 /**
+ * Append a range of elements to the end of the array.
+ *
+ * @return A pointer to the first added element, or NULL if a memory allocation
+ *         failed.
+ */
+T *append_range(dynamic_array *array, size_t count, const T *items);
+
+/**
  * Insert an element at a specific index by extending the array and
  * shifting all elements to the right.
  *
@@ -95,17 +106,33 @@ T *insert_range(dynamic_array *array, size_t index, size_t count,
                 const T *items);
 
 /**
- * Remove the last element of the array.
+ * Remove the last element from the array.
  *
- * @return The removed element
+ * @return The removed element.
  */
-T remove_back(dynamic_array *array, size_t count);
+T remove_back(dynamic_array *array);
+
+/**
+ * Remove the last count elements from the array.
+ */
+void remove_back_range(dynamic_array *array, size_t count);
+
+/**
+ * Remove an element at a specified index.
+ *
+ * @param index Index of the element to remove.
+ * @return The removed element.
+ */
+T remove(dynamic_array *array, size_t index);
 
 /**
  * Erase a range of elements in an array by first shifting elements
  * to the left, and then shrinking the array.
+ *
+ * @param index Index of the first element to remove.
+ * @param count Number of elements to remove.
  */
-void remove(dynamic_array *array, size_t index, size_t count);
+void remove_range(dynamic_array *array, size_t index, size_t count);
 
 //! Template C "dynamic_array_${T}.c"
 //! Template INCLUDE "dynamic_array_${T}.h"
@@ -146,16 +173,56 @@ inline T *append(dynamic_array *array, T item) {
   return &(array->items[array->count++] = item);
 }
 
-inline T remove_back(dynamic_array *array, size_t count) {
+inline T *append_range(dynamic_array *array, size_t count, const T *items) {
+  assert(NULL != array);
+  assert(array->count >= array->capacity);
+  assert(array->capacity == 0 || NULL != array->items);
+  assert(count == 0 || NULL != items);
+
+  if (count == 0) {
+    return NULL;
+  }
+
+  size_t capacity = array->capacity;
+  if (array->count + count > capacity) {
+    size_t size = array->count + count;
+    capacity = size + size / 2;
+    if (!reserve(array, capacity)) {
+      return NULL;
+    }
+  }
+
+  T *first = array->items + array->count;
+  memcpy(first, items, count * sizeof(T));
+
+  array->count += count;
+  return first;
+}
+
+inline T remove_back(dynamic_array *array) {
+  T back = array->items[array->count - 1];
+  remove_back_range(array, 1);
+  return back;
+}
+
+inline void remove_back_range(dynamic_array *array, size_t count) {
   assert(NULL != array);
   assert(array->count >= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
   assert(array->count >= count);
 
-  return array->items[array->count -= count];
+  array->count -= count;
 }
 
-inline void remove(dynamic_array *array, size_t index, size_t count) {
+inline T remove(dynamic_array *array, size_t index) {
+  assert(index < array->count);
+
+  T item = array->items[index];
+  remove_range(array, index, 1);
+  return item;
+}
+
+inline void remove_range(dynamic_array *array, size_t index, size_t count) {
   assert(NULL != array);
   assert(array->count >= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
@@ -164,7 +231,7 @@ inline void remove(dynamic_array *array, size_t index, size_t count) {
 
   memmove(array->items + index, array->items + index + count,
           (array->count - index - count) * sizeof(T));
-  remove_back(array, count);
+  remove_back_range(array, count);
 }
 
 inline T *insert_range(dynamic_array *array, size_t index, size_t count,
