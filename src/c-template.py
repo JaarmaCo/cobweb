@@ -1,11 +1,204 @@
 import argparse
 import json
 import re
+import sys
 import copy
 from sys import stderr, stdin
 from types import SimpleNamespace
 from typing import Any
 from warnings import simplefilter
+
+DEFAULT_TEMPLATE = [
+    [
+        {
+            "typename": "int8_t",
+            "includes": [
+                "<stdint.h>"
+            ],
+            "short": "i8"
+        }
+    ],
+    [
+        {
+            "typename": "int16_t",
+            "includes": [
+                "<stdint.h>",
+            ],
+            "short": "i16"
+        }
+    ],
+    [
+        {
+            "typename": "int32_t",
+            "includes": [
+                "<stdint.h>",
+            ],
+            "short": "i32"
+        }
+    ],
+    [
+        {
+            "typename": "int64_t",
+            "includes": [
+                "<stdint.h>",
+            ],
+            "short": "i64"
+        }
+    ],
+    [
+        {
+            "typename": "uint8_t",
+            "includes": [
+                "<stdint.h>"
+            ],
+            "short": "u8"
+        }
+    ],
+    [
+        {
+            "typename": "uint16_t",
+            "includes": [
+                "<stdint.h>",
+            ],
+            "short": "u16"
+        }
+    ],
+    [
+        {
+            "typename": "uint32_t",
+            "includes": [
+                "<stdint.h>",
+            ],
+            "short": "u32"
+        }
+    ],
+    [
+        {
+            "typename": "uint64_t",
+            "includes": [
+                "<stdint.h>",
+            ],
+            "short": "u64"
+        }
+    ],
+    [
+        {
+            "typename": "size_t",
+            "includes": [
+                "<stddef.h>",
+            ],
+            "short": "uz"
+        }
+    ],
+    [
+        {
+            "typename": "ptrdiff_t",
+            "includes": [
+                "<stddef.h>",
+            ],
+            "short": "iz"
+        }
+    ],
+    [
+        {
+            "typename": "intptr_t",
+            "includes": [
+                "<stdint.h>",
+            ],
+            "short": "iptr"
+        }
+    ],
+    [
+        {
+            "typename": "uintptr_t",
+            "includes": [
+                "<stdint.h>",
+            ],
+            "short": "uptr"
+        }
+    ],
+    [
+        {
+            "typename": "float",
+            "short": "f"
+        }
+    ],
+    [
+        {
+            "typename": "double",
+            "short": "d"
+        }
+    ],
+    [
+        {
+            "typename": "long double",
+            "short": "ld"
+        }
+    ],
+    [
+        {
+            "typename": "int",
+            "short": "i"
+        }
+    ],
+    [
+        {
+            "typename": "unsigned int",
+            "short": "u"
+        }
+    ],
+    [
+        {
+            "typename": "long",
+            "short": "l"
+        }
+    ],
+    [
+        {
+            "typename": "unsigned long",
+            "short": "ul"
+        }
+    ],
+    [
+        {
+            "typename": "long long",
+            "short": "ll"
+        }
+    ],
+    [
+        {
+            "typename": "unsigned long long",
+            "short": "ull"
+        }
+    ],
+    [
+        {
+            "typename": "void *",
+            "short": "ptr"
+        }
+    ],
+    [
+        {
+            "typename": "bool",
+            "includes": [
+                "<stdbool.h>"
+            ],
+            "short": "b"
+        }
+    ],
+    [
+        {
+            "typename": "char",
+            "short": "c"
+        }
+    ],
+    [
+        {
+            "typename": "wchar_t",
+            "short": "wc"
+        }
+    ]
+]
 
 DIR = re.compile(r"//\s*!\s*Template\s+([A-Z]+)\s+(.*)")
 TYPEDEF = re.compile(r"\s*typedef\s+(.*)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*;\s*", flags=re.MULTILINE)
@@ -230,12 +423,19 @@ def token(source: str) -> tuple[str, str, str]:
 
     return "NONE", "", source
 
-def substitute(source: str, mangles: dict[str, Any]) -> str:
+INCLUDE_CPP = re.compile(r'\s*#\s*include\s*((<[^>]+>)|("[^"]+"))\s*', flags=re.MULTILINE)
+
+def substitute(source: str, mangles: dict[str, Any], out_includes: list[str] | None = None) -> str:
     result = ""
 
     while True:
         kind, tok, next = token(source)
         source = next
+
+        if kind == "CPP" and out_includes is not None:
+            m = INCLUDE_CPP.match(tok)
+            if m is not None:
+                out_includes.append(m.group(1))
 
         if tok == "":
             result += next
@@ -283,14 +483,14 @@ def seek_header(args, data, types):
         **types,
     }
 
-    results.header_name = expand_env(json.loads(m.group(1)), env)
+    results.header_name = expand_env(json.loads(m.group(1)), env).replace(" ", "_")
 
     src = SOURCE.search(data, m.end())
     if src is None:
         results.header = data[m.end():]
         return results
 
-    results.source_name = expand_env(json.loads(src.group(1)), env)
+    results.source_name = expand_env(json.loads(src.group(1)), env).replace(" ", "_")
 
     results.header = data[m.end():src.start()]
     results.source = data[src.end():]
@@ -304,25 +504,63 @@ def indent_print(s: str, indent: str = "    "):
 def macro_name(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9_]", "_", s).upper()
 
-def add_header_guard(name: str, results: SimpleNamespace, types, s: str) -> str:
+def get_type_includes(results: SimpleNamespace, types: list[dict], s: str, existing_includes: list[str] | None = None) -> list[str]:
+    env = namespace_to_dict(results)
+
+    for tx in types:
+        env = {
+            **env,
+            **tx
+        }
+
+    include_list = []
+    for t in types:
+        if "includes" not in t:
+            continue
+
+        for inc in t["includes"]:
+            inc = expand_env(inc, env)
+            if existing_includes is None or inc not in existing_includes:
+                include_list.append(f"#include {inc}")
+                if existing_includes is not None:
+                    existing_includes.append(inc)
+    return include_list
+
+def add_header_guard(args, results: SimpleNamespace, types: dict[str, str], s: str, includes: list[str]) -> str:
 
     m = GUARD.search(s)
     if m is not None:
         guard_macro = expand_env(json.loads(m.group(1)), {
-            '<': name,
+            '<': args.file,
             **types,
             **namespace_to_dict(results),
         })
         s = s[:m.start()] + s[m.end():]
     else:
-        guard_macro = macro_name(name)
+        guard_macro = macro_name(args.file)
 
     return f"""
 #if !defined({guard_macro})
-#define {guard_macro} 1
 
+// Generated by:
+//
+// c-template {" ".join(f"{arg!r}" for arg in sys.argv[1:])}
+//
+//
+// ===============================================
+// Template implementation of {args.file}
+// {"\n// ".join([ f"{key}: {value}" for key, value in types.items() ])}
+// ===============================================
+//
+{f"""// ==== Includes added by template generator ====
+{"\n".join(includes)}
+// =============================================="""}
+//
+// ==== BEGIN GENERATED CODE ====
 {s}
+// ==== END GENERATED CODE ====
 
+#define {guard_macro} 1
 #endif // !defined({guard_macro})"""
 
 def namespace_to_dict(ns: Any) -> dict:
@@ -383,14 +621,19 @@ def remove_inline(source: str) -> str:
 def process(args):
     with open(args.file) as f:
         src = f.read()
+    existing_includes = []
     data, types = parse_types(args, src)
     data, mangles = parse_mangles(args, types, data)
-    data = substitute(data, str_types(types))
+    data = substitute(data, str_types(types), out_includes=existing_includes)
     data = substitute(data, mangles)
 
     results = seek_header(args, data, types)
-    results.header = add_header_guard(args, results, types, results.header)
+
     results.header = add_includes(results, types, results.header_name, results.header)
+
+    header_includes_to_add = get_type_includes(results, args.types, results.header, existing_includes=existing_includes)
+
+    results.header = add_header_guard(args, results, types, results.header, header_includes_to_add)
 
     with open(f"{args.out}/{results.header_name}", "w") as f:
         print(f"Wrote {args.out}/{results.header_name}", file=stderr)
@@ -412,26 +655,6 @@ def main():
         description="""
         A Python-based template generator for C.
         """)
-    parser.add_argument("-I",
-                        dest="include",
-                        action="append",
-                        default=[],
-                        help="Pass an include argument to the C preprocessor")
-    parser.add_argument("-D",
-                        dest="define",
-                        action="append",
-                        default=[],
-                        help="Pass a definition to the C preprocessor")
-    parser.add_argument("-W",
-                        dest="pp_arg",
-                        action="append",
-                        default=[],
-                        help="Pass a miscellaneous argument to the C preprocessor")
-    parser.add_argument("-p",
-                        "--preprocessor",
-                        dest="preprocessor",
-                        default="cpp",
-                        help="Override the default C preprocessor command")
     parser.add_argument("-o",
                         "--output-directory",
                         dest="out",
@@ -446,16 +669,32 @@ def main():
                         "--template-json",
                         dest="template_json_file",
                         help="JSON template file to parse type arguments from")
+    parser.add_argument("--default-template",
+                        action="store_true",
+                        dest="default_template",
+                        help="Use the default template arguments.")
+    parser.add_argument("--print-default-template",
+                        action="store_true",
+                        dest="print_default_template",
+                        help="Print the default template arguments (enabled using the --default-template flag) and exit.")
     parser.add_argument("types",
                         nargs="*",
                         help="Positional type arguments to use in the substitution",
                         type=json.loads)
     args = parser.parse_args()
 
+    if args.print_default_template:
+        print(json.dumps(DEFAULT_TEMPLATE))
+        exit(0)
+
     if args.template_json_file is not None:
         with open(args.template_json_file) as f:
             for t in json.load(f):
                 args.types.append(t)
+
+    if args.default_template:
+        for t in DEFAULT_TEMPLATE:
+            args.types.append(t)
 
     try:
 
