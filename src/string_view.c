@@ -1,5 +1,5 @@
 #include "string_view.h"
-#include "format.h"
+
 #include <assert.h>
 #include <stdbool.h>
 #include <string.h>
@@ -34,6 +34,36 @@ string_view_t sv_take(string_view_t sv, size_t count) {
 string_view_t sv_drop(string_view_t sv, size_t count) {
   assert(count <= sv.count);
   return sv_substr(sv, count, sv.count - count);
+}
+
+string_view_t sv_cut_ch(string_view_t *sv, char delim) {
+
+  size_t pos = sv_find_char(*sv, delim, 0);
+  if (pos == (size_t)-1) {
+
+    string_view_t result = *sv;
+    *sv = (string_view_t){0};
+    return result;
+  }
+
+  string_view_t result = sv_take(*sv, pos);
+  *sv = sv_drop(*sv, pos + 1);
+  return result;
+}
+
+string_view_t sv_cut_substr(string_view_t *sv, string_view_t delim) {
+
+  size_t pos = sv_find_substr(*sv, delim, 0);
+  if (pos == (size_t)-1) {
+
+    string_view_t result = *sv;
+    *sv = (string_view_t){0};
+    return result;
+  }
+
+  string_view_t result = sv_take(*sv, pos);
+  *sv = sv_drop(*sv, pos + delim.count);
+  return result;
 }
 
 string_view_t sv_trim_left(string_view_t sv, const char *trim_chars) {
@@ -140,6 +170,12 @@ bool sv_equals(string_view_t lhs, string_view_t rhs) {
          strncmp(lhs.items, rhs.items, lhs.count) == 0;
 }
 
+bool sv_subrange_of(string_view_t sv, string_view_t other) {
+  const char *src_beg = sv.items, *src_end = sv.items + sv.count;
+  const char *oth_beg = other.items, *oth_end = other.items + other.count;
+  return oth_beg - src_beg >= 0 && src_end - oth_end >= 0;
+}
+
 int sv_compare(string_view_t lhs, string_view_t rhs) {
   if (lhs.count == rhs.count) {
     return strncmp(lhs.items, rhs.items, lhs.count);
@@ -156,129 +192,6 @@ int sv_compare(string_view_t lhs, string_view_t rhs) {
     }
     return 1;
   }
-}
-
-string_view_t sv_scanf(string_view_t sv, const char *fmt, ...) {
-  va_list va;
-  va_start(va, fmt);
-  string_view_t result = sv_vscanf(sv, fmt, va);
-  va_end(va);
-  return result;
-}
-
-string_view_t sv_vscanf(string_view_t sv, const char *fmt, va_list va_in) {
-  string_view_t vfmt = sv_cstr(fmt);
-
-  va_list va;
-  va_copy(va, va_in);
-
-  while (sv.count != 0 && vfmt.count != 0) {
-
-    if (*vfmt.items == '%') {
-
-      format_specifier_t spec;
-      int ec = fmt_parse_specifier(&vfmt, &spec);
-      assert(ec == 0);
-
-      fmt_fetch_lengths(&spec, &va);
-
-      switch (spec.specifier) {
-      case '%':
-        if (*sv.items != '%') {
-          goto END;
-        }
-        sv = sv_drop(sv, 1);
-        break;
-      case 'd':
-        if (strcmp(spec.length, "ll") == 0) {
-          sv = sv_read_ll(sv, va_arg(va, long long *), 10);
-        } else if (strcmp(spec.length, "l") == 0) {
-          sv = sv_read_l(sv, va_arg(va, long *), 10);
-        } else if (strcmp(spec.length, "j")) {
-          sv = sv_read_imax(sv, va_arg(va, intmax_t *), 10);
-        } else if (strcmp(spec.length, "t")) {
-          sv = sv_read_iz(sv, va_arg(va, ptrdiff_t *), 10);
-        } else {
-          sv = sv_read_i(sv, va_arg(va, int *), 10);
-        }
-        break;
-      case 'u':
-        if (strcmp(spec.length, "ll") == 0) {
-          sv = sv_read_ull(sv, va_arg(va, long long *), 10);
-        } else if (strcmp(spec.length, "l") == 0) {
-          sv = sv_read_ul(sv, va_arg(va, long *), 10);
-        } else if (strcmp(spec.length, "j")) {
-          sv = sv_read_umax(sv, va_arg(va, intmax_t *), 10);
-        } else if (strcmp(spec.length, "z")) {
-          sv = sv_read_uz(sv, va_arg(va, size_t *), 10);
-        } else {
-          sv = sv_read_u(sv, va_arg(va, unsigned int *), 10);
-        }
-        break;
-      case 'x':
-      case 'X':
-        if (strcmp(spec.length, "ll") == 0) {
-          sv = sv_read_ull(sv, va_arg(va, long long *), 16);
-        } else if (strcmp(spec.length, "l") == 0) {
-          sv = sv_read_ul(sv, va_arg(va, long *), 16);
-        } else if (strcmp(spec.length, "j")) {
-          sv = sv_read_umax(sv, va_arg(va, intmax_t *), 16);
-        } else if (strcmp(spec.length, "z")) {
-          sv = sv_read_uz(sv, va_arg(va, size_t *), 16);
-        } else if (strcmp(spec.length, "t")) {
-          sv = sv_read_uz(sv, va_arg(va, intptr_t *), 16);
-        } else {
-          sv = sv_read_u(sv, va_arg(va, unsigned int *), 16);
-        }
-        break;
-      case 'o':
-      case 'O':
-        if (strcmp(spec.length, "ll") == 0) {
-          sv = sv_read_ull(sv, va_arg(va, long long *), 8);
-        } else if (strcmp(spec.length, "l") == 0) {
-          sv = sv_read_ul(sv, va_arg(va, long *), 8);
-        } else if (strcmp(spec.length, "j")) {
-          sv = sv_read_umax(sv, va_arg(va, intmax_t *), 8);
-        } else if (strcmp(spec.length, "z")) {
-          sv = sv_read_uz(sv, va_arg(va, size_t *), 8);
-        } else if (strcmp(spec.length, "t")) {
-          sv = sv_read_uz(sv, va_arg(va, intptr_t *), 8);
-        } else {
-          sv = sv_read_u(sv, va_arg(va, unsigned int *), 8);
-        }
-        break;
-      case 'g':
-      case 'G':
-      case 'f':
-      case 'F':
-        if (strcmp(spec.length, "l") == 0) {
-          sv = sv_read_ld(sv, va_arg(va, long double *), 10);
-        } else {
-          sv = sv_read_d(sv, va_arg(va, double *), 10);
-        }
-        break;
-      case 'a':
-      case 'A':
-        if (strcmp(spec.length, "l") == 0) {
-          sv = sv_read_ld(sv, va_arg(va, long double *), 16);
-        } else {
-          sv = sv_read_d(sv, va_arg(va, double *), 16);
-        }
-        break;
-      }
-      continue;
-    }
-
-    if (*vfmt.items != *sv.items) {
-      break;
-    }
-
-    sv = sv_drop(sv, 1);
-    vfmt = sv_drop(vfmt, 1);
-  }
-END:
-  va_end(va);
-  return sv;
 }
 
 int32_t sv_decode_utf8(string_view_t *sv) {

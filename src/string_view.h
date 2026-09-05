@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define SV(str) ((string_view_t){.items = (str), .count = sizeof(str) - 1})
+
 /**
  * Unmanaged string view type.
  */
@@ -50,6 +52,23 @@ string_view_t sv_take(string_view_t sv, size_t count);
  * @param count Number of characters to exclude from the substring.
  */
 string_view_t sv_drop(string_view_t sv, size_t count);
+
+/**
+ * Cut a string by a delimiter. This function returns the part of the string,
+ * before the delimiter, and the view the sv argument points to is adjusted so
+ * it points to the string after the delimiter.
+ *
+ * @param[inout] sv Pointer to a string view to cut, and output parameter for
+ *                  the cut suffix.
+ * @param delim Delimiter to cut by
+ * @return A view into the string before the delimiter.
+ * @{
+ */
+string_view_t sv_cut_ch(string_view_t *sv, char delim);
+string_view_t sv_cut_substr(string_view_t *sv, string_view_t delim);
+/**
+ * @}
+ */
 
 /**
  * Searches the string-view from the left and removes every occurence of
@@ -158,6 +177,18 @@ static inline bool sv_contains_substr(string_view_t sv, string_view_t substr) {
  * same characters.
  */
 bool sv_equals(string_view_t lhs, string_view_t rhs);
+
+/**
+ * Tests whether the other string view is a view into the same array as, and
+ * within the given source view.
+ *
+ * @param sv Source view to treat as the superset.
+ * @param substr String to check.
+ *
+ * @return true if substr is a substring of sv, and part of the same underlying
+ *         character array.
+ */
+bool sv_subrange_of(string_view_t sv, string_view_t substr);
 
 /**
  * Lexicographically compares the left and right strings.
