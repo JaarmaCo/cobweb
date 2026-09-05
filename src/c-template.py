@@ -3,6 +3,7 @@ import json
 import re
 import sys
 import copy
+import os.path as path
 from sys import stderr, stdin
 from types import SimpleNamespace
 from typing import Any
@@ -677,6 +678,9 @@ def main():
                         action="store_true",
                         dest="print_default_template",
                         help="Print the default template arguments (enabled using the --default-template flag) and exit.")
+    parser.add_argument("--infer",
+                        dest="infer",
+                        help="Infer template from the name of the given argument.")
     parser.add_argument("types",
                         nargs="*",
                         help="Positional type arguments to use in the substitution",
@@ -695,6 +699,29 @@ def main():
     if args.default_template:
         for t in DEFAULT_TEMPLATE:
             args.types.append(t)
+
+    if args.infer is not None:
+        infer: str = args.infer
+
+        name, _ = path.splitext(path.basename(args.file))
+        if name in infer:
+            infer = path.basename(infer.replace(name, ""))
+
+        infer = infer.strip('_')
+        infer, _ = path.splitext(infer)
+
+        for tx in DEFAULT_TEMPLATE:
+            t = tx[0]
+            if infer == t["typename"] or infer == t["short"]:
+                if len(args.types) == 0:
+                    args.types = [ t ]
+                else:
+                    args.types.append([ t ])
+                break
+
+    if len(args.types) == 0:
+        print("No template specified, exiting...", file=stderr)
+        exit(1)
 
     try:
 
