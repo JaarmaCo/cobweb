@@ -25,6 +25,7 @@ typedef int T;
 #define remove_back da_remove_back
 #define remove da_remove
 #define remove_range da_remove_range
+#define destroy da_destroy
 
 /**
  * Templated dynamic array implementation that uses a custom allocator for
@@ -62,6 +63,11 @@ typedef struct dynamic_array {
   allocator_t *allocator;
 
 } dynamic_array;
+
+/**
+ * Destroy the provided dynamic array.
+ */
+void destroy(dynamic_array *array);
 
 /**
  * Reserve space for at least {@param size} elements in the array.
@@ -137,9 +143,18 @@ void remove_range(dynamic_array *array, size_t index, size_t count);
 //! Template C "dynamic_array_${T}.c"
 //! Template INCLUDE "dynamic_array_${T}.h"
 
+inline void destroy(dynamic_array *array) {
+  if (NULL == array || NULL == array->items) {
+    return;
+  }
+  allocator_release(array->allocator, array->items, array->capacity * sizeof(T),
+                    _Alignof(T));
+  memset(array, 0, sizeof *array);
+}
+
 inline size_t reserve(dynamic_array *array, size_t size) {
   assert(NULL != array);
-  assert(array->count >= array->capacity);
+  assert(array->count <= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
 
   if (size <= array->capacity) {
@@ -148,7 +163,7 @@ inline size_t reserve(dynamic_array *array, size_t size) {
 
   T *new_memory = (T *)allocator_resize(array->allocator, array->items,
                                         array->capacity * sizeof(T),
-                                        size * sizeof(T), alignof(T));
+                                        size * sizeof(T), _Alignof(T));
   if (NULL == new_memory) {
     return 0;
   }
@@ -159,7 +174,7 @@ inline size_t reserve(dynamic_array *array, size_t size) {
 
 inline T *append(dynamic_array *array, T item) {
   assert(NULL != array);
-  assert(array->count >= array->capacity);
+  assert(array->count <= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
 
   size_t capacity = array->capacity;
@@ -170,12 +185,14 @@ inline T *append(dynamic_array *array, T item) {
       return NULL;
     }
   }
-  return &(array->items[array->count++] = item);
+  T *end = &array->items[array->count++];
+  *end = item;
+  return end;
 }
 
 inline T *append_range(dynamic_array *array, size_t count, const T *items) {
   assert(NULL != array);
-  assert(array->count >= array->capacity);
+  assert(array->count <= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
   assert(count == 0 || NULL != items);
 
@@ -207,7 +224,7 @@ inline T remove_back(dynamic_array *array) {
 
 inline void remove_back_range(dynamic_array *array, size_t count) {
   assert(NULL != array);
-  assert(array->count >= array->capacity);
+  assert(array->count <= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
   assert(array->count >= count);
 
@@ -224,7 +241,7 @@ inline T remove(dynamic_array *array, size_t index) {
 
 inline void remove_range(dynamic_array *array, size_t index, size_t count) {
   assert(NULL != array);
-  assert(array->count >= array->capacity);
+  assert(array->count <= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
   assert(index < array->count);
   assert(index + count <= array->count);
@@ -237,22 +254,21 @@ inline void remove_range(dynamic_array *array, size_t index, size_t count) {
 inline T *insert_range(dynamic_array *array, size_t index, size_t count,
                        const T *items) {
   assert(NULL != array);
-  assert(array->count >= array->capacity);
+  assert(array->count <= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
   assert(index < array->count);
   assert(count == 0 || NULL != items);
 
-  size_t start = array->count;
-  for (size_t i = 0; i < count; ++i) {
-
-    if (!append(array, items[i])) {
+  if (array->count + count > array->capacity) {
+    size_t required = array->count + count;
+    if (!reserve(array, required + required / 2)) {
       return NULL;
     }
-
-    T swp = array->items[i + index];
-    array->items[i + index] = array->items[array->count - 1];
-    array->items[array->count - 1] = swp;
   }
+  memmove(array->items + index + count, array->items + index,
+          (array->count - index) * sizeof(T));
+  memcpy(array->items + index, items, count * sizeof(T));
+  array->count += count;
   return array->items + index;
 }
 
