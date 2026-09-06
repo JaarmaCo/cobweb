@@ -1,5 +1,7 @@
 #if !defined(STRING_BUILDER_H_)
 
+#include <stdio.h>
+
 #include "dynamic_array_char.h"
 #include "string_view.h"
 
@@ -52,6 +54,20 @@ char *sb_append_sv(string_builder_t *sb, string_view_t item);
  */
 
 /**
+ * Append a string and format it as a string literal.
+ *
+ * @param sb String builder to append to.
+ * @param item String containing the literal to append.
+ * @param dialect Specifies the kind of string literal to append (use 0 for a
+ *                C-like ASCII string literal).
+ *
+ * @return A pointer to the string builder string, or NULL if an allocation
+ *         failure occured.
+ */
+char *sb_append_string_literal(string_builder_t *sb, string_view_t item,
+                               int dialect);
+
+/**
  * Joins strings with an intermediate delimiter.
  *
  * @param sb String builder to append the result to.
@@ -89,6 +105,45 @@ char *sb_vformat(string_builder_t *sb, const char *fmt, va_list va);
 /**
  * @}
  */
+
+/**
+ * Read characters from a file stream.
+ *
+ * @param sb String builder to append the contents of the file to.
+ * @param f File stream to get characters from.
+ * @param max_read Maximum number of characters to read (use SIZE_MAX to read
+ *                 the entire file).
+ *
+ * @return A pointer to the string builder string, or NULL if an allocation
+ *         failure occured.
+ */
+char *sb_read_file(string_builder_t *sb, FILE *f, size_t max_read);
+
+/**
+ * Read the next line from a file. This function will consume the newline
+ * delimiter from the stream, but will not append it to the builder.
+ *
+ * @param sb String builder to append the read line to.
+ * @param f File to read characters from.
+ *
+ * @return A pointer to the string builder string, or NULL if an allocation
+ *         failure occured.
+ */
+char *sb_read_line(string_builder_t *sb, FILE *f);
+
+/**
+ * Read characters from a file into a string builder until a specified delimiter
+ * is encountered. The delimiter is not appended to the string builder, and is
+ * consumed from the stream.
+ *
+ * @param sb String builder to append to.
+ * @param f File to read from.
+ * @param delim Delimiter to terminate at.
+ *
+ * @return A pointer to the string builder string, or NULL if an allocation
+ *         failure occured.
+ */
+char *sb_read_until(string_builder_t *sb, FILE *f, string_view_t delim);
 
 #define STRING_BUILDER_H_
 #endif

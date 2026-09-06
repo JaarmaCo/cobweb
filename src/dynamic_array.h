@@ -161,6 +161,7 @@ inline size_t reserve(dynamic_array *array, size_t size) {
     return array->capacity;
   }
 
+  size = size + size / 2;
   T *new_memory = (T *)allocator_resize(array->allocator, array->items,
                                         array->capacity * sizeof(T),
                                         size * sizeof(T), _Alignof(T));
@@ -177,13 +178,8 @@ inline T *append(dynamic_array *array, T item) {
   assert(array->count <= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
 
-  size_t capacity = array->capacity;
-  if (array->count + 1 > capacity) {
-    size_t size = array->count + 1;
-    capacity = size + size / 2;
-    if (!reserve(array, capacity)) {
-      return NULL;
-    }
+  if (!reserve(array, array->count + 1)) {
+    return NULL;
   }
   T *end = &array->items[array->count++];
   *end = item;
@@ -200,13 +196,8 @@ inline T *append_range(dynamic_array *array, size_t count, const T *items) {
     return NULL;
   }
 
-  size_t capacity = array->capacity;
-  if (array->count + count > capacity) {
-    size_t size = array->count + count;
-    capacity = size + size / 2;
-    if (!reserve(array, capacity)) {
-      return NULL;
-    }
+  if (!reserve(array, array->count + count)) {
+    return NULL;
   }
 
   T *first = array->items + array->count;
@@ -259,11 +250,8 @@ inline T *insert_range(dynamic_array *array, size_t index, size_t count,
   assert(index < array->count);
   assert(count == 0 || NULL != items);
 
-  if (array->count + count > array->capacity) {
-    size_t required = array->count + count;
-    if (!reserve(array, required + required / 2)) {
-      return NULL;
-    }
+  if (!reserve(array, array->count + count)) {
+    return NULL;
   }
   memmove(array->items + index + count, array->items + index,
           (array->count - index) * sizeof(T));

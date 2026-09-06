@@ -1,9 +1,11 @@
 #include "string_builder.h"
 
+#include <ctype.h>
+
 string_view_t sb_view(const string_builder_t *sb) {
   return (string_view_t){
       .items = sb->items,
-      .count = sb->count == 0 ? 0 : sb->count - 1,
+      .count = sb->count,
   };
 }
 
@@ -14,38 +16,128 @@ string_view_t sb_canonicalize_view(string_builder_t *sb, string_view_t view) {
   }
   memmove(sb->items, view.items, view.count);
   sb->items[view.count] = 0;
-  sb->count = view.count + 1;
+  sb->count = view.count;
   return sb_view(sb);
 }
 
 char *sb_append_char(string_builder_t *sb, char ch) {
-
-  if (sb->count < 1) {
-    if (!da_append_c(sb, 0)) {
-      return NULL;
-    }
-  }
-
-  if (!da_append_c(sb, 0)) {
+  if (!da_reserve_c(sb, sb->count + 2)) {
     return NULL;
   }
-
-  sb->items[sb->count - 2] = ch;
+  sb->items[sb->count++] = ch;
+  sb->items[sb->count] = 0;
   return sb->items;
 }
 
 char *sb_append_sv(string_builder_t *sb, string_view_t sv) {
-  size_t nc = da_reserve_c(sb, sb->count + sv.count + 1);
-  if (nc == 0) {
+  if (!da_reserve_c(sb, sb->count + sv.count + 1)) {
     return NULL;
   }
   strncpy(sb->items + sb->count, sv.items, sv.count);
-  sb->count += sv.count + 1;
+  sb->count += sv.count;
   return sb->items;
 }
 
 char *sb_append_cstr(string_builder_t *sb, const char *cstr) {
-  return sb_append_sv(sb, sv_cstr(cstr));
+  for (const char *ptr = cstr; *ptr; ++ptr) {
+    if (!da_reserve_c(sb, sb->count + 2)) {
+      return NULL;
+    }
+    sb->items[sb->count++] = *ptr;
+  }
+  sb->items[sb->count] = 0;
+  return sb->items;
+}
+
+char *sb_append_string_literal(string_builder_t *sb, string_view_t literal,
+                               int dialect) {
+  (void)dialect;
+
+  if (!da_reserve_c(sb, literal.count + 3)) {
+    return NULL;
+  }
+
+  if (!sb_append_char(sb, '"')) {
+    return NULL;
+  }
+
+  for (size_t i = 0; i < literal.count; ++i) {
+    switch (literal.items[i]) {
+    case '\'':
+      if (!sb_append_sv(sb, SV("\\'"))) {
+        return NULL;
+      }
+      break;
+    case '\"':
+      if (!sb_append_sv(sb, SV("\\\""))) {
+        return NULL;
+      }
+      break;
+    case '\?':
+      if (!sb_append_sv(sb, SV("\\?"))) {
+        return NULL;
+      }
+      break;
+    case '\\':
+      if (!sb_append_sv(sb, SV("\\\\"))) {
+        return NULL;
+      }
+      break;
+    case '\a':
+      if (!sb_append_sv(sb, SV("\\a"))) {
+        return NULL;
+      }
+      break;
+    case '\b':
+      if (!sb_append_sv(sb, SV("\\b"))) {
+        return NULL;
+      }
+      break;
+    case '\f':
+      if (!sb_append_sv(sb, SV("\\f"))) {
+        return NULL;
+      }
+      break;
+    case '\n':
+      if (!sb_append_sv(sb, SV("\\n"))) {
+        return NULL;
+      }
+      break;
+    case '\r':
+      if (!sb_append_sv(sb, SV("\\r"))) {
+        return NULL;
+      }
+      break;
+    case '\t':
+      if (!sb_append_sv(sb, SV("\\t"))) {
+        return NULL;
+      }
+      break;
+    case '\v':
+      if (!sb_append_sv(sb, SV("\\v"))) {
+        return NULL;
+      }
+      break;
+    default:
+      if (isprint(literal.items[i])) {
+        if (!sb_append_char(sb, literal.items[i])) {
+          return NULL;
+        }
+        break;
+      }
+
+      if (!sb_format(sb, "\\x%0.2x", (unsigned char)literal.items[i])) {
+        return NULL;
+      }
+      break;
+    }
+  }
+
+  if (!sb_append_char(sb, '"')) {
+    return NULL;
+  }
+
+  return sb->items;
 }
 
 char *sb_format(string_builder_t *sb, const char *fmt, ...) {
@@ -57,25 +149,32 @@ char *sb_format(string_builder_t *sb, const char *fmt, ...) {
 }
 
 char *sb_vformat(string_builder_t *sb, const char *fmt, va_list va) {
-  for (;;) {
 
-    size_t write_limit = sb->capacity - sb->count + 1;
-    int nw = vsnprintf(sb->items + sb->count - 1, write_limit, fmt, va);
+  for (int i = 0; i < 2; ++i) {
 
-    if (nw < 0) {
+    va_list cp;
+    va_copy(cp, va);
+
+    size_t remaining_capacity = sb->capacity - sb->count;
+    int nw = vsnprintf(sb->items + sb->count, remaining_capacity, fmt, cp);
+
+    va_end(cp);
+
+    if (nw < 0) { // Format error
       return NULL;
     }
 
-    if (nw < (int)write_limit) {
-      sb->count += (size_t)nw + 1;
-      break;
+    if ((size_t)nw < remaining_capacity) { // Complete write
+      sb->count += (size_t)nw;
+      return sb->items;
     }
 
-    if (!da_reserve_c(sb, sb->count + (size_t)nw)) {
+    // Insufficient space, reserve and try again
+    if (!da_reserve_c(sb, sb->count + (size_t)nw + 1)) {
       return NULL;
     }
   }
-  return sb->items;
+  return NULL;
 }
 
 char *sb_join_sv(string_builder_t *sb, string_view_t delim, size_t count,
@@ -118,6 +217,90 @@ char *sb_join_sb(string_builder_t *sb, string_view_t delim, size_t count,
     }
     if (!sb_append_sv(sb, sb_view(&items[i]))) {
       return NULL;
+    }
+  }
+  return sb->items;
+}
+
+char *sb_read_file(string_builder_t *sb, FILE *f, size_t max_read) {
+
+  if (max_read != SIZE_MAX) {
+    if (!da_reserve_c(sb, sb->count + max_read + 1)) {
+      return NULL;
+    }
+  }
+
+  for (size_t i = 0; i < max_read; ++i) {
+
+    int ch = fgetc(f);
+    if (ch == EOF) {
+      break;
+    }
+
+    if (!sb_append_char(sb, (char)ch)) {
+      return NULL;
+    }
+  }
+  return sb->items;
+}
+
+char *sb_read_line(string_builder_t *sb, FILE *f) {
+
+  for (;;) {
+
+    int ch = fgetc(f);
+    if (ch == EOF || ch == '\n') {
+      break;
+    }
+
+    if (!sb_append_char(sb, (char)ch)) {
+      return NULL;
+    }
+  }
+  return sb->items;
+}
+
+char *sb_read_until(string_builder_t *sb, FILE *f, string_view_t delim) {
+
+  int ch;
+  size_t delim_pos = 0;
+  for (;;) {
+
+    ch = fgetc(f);
+    if (ch == EOF) {
+      // There may be deferred characters from a partial delimiter match, append
+      // them.
+      //
+      if (delim_pos != 0 && !sb_append_sv(sb, sv_take(delim, delim_pos))) {
+        return NULL;
+      }
+      break;
+    }
+
+    if (ch == delim.items[delim_pos]) {
+      // Partial delimiter match, defer appending characters until a non-match.
+      //
+      ++delim_pos;
+    } else {
+
+      // Mismatch: append any deferred characters, also append the mismatched
+      // character and reset the delimiter match position.
+      //
+      if (delim_pos != 0 && !sb_append_sv(sb, sv_take(delim, delim_pos))) {
+        return NULL;
+      }
+
+      if (!sb_append_char(sb, (char)ch)) {
+        return NULL;
+      }
+
+      delim_pos = 0;
+    }
+
+    // Full delimiter match found, exit.
+    //
+    if (delim_pos == delim.count) {
+      break;
     }
   }
   return sb->items;

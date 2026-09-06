@@ -195,69 +195,7 @@ int sv_compare(string_view_t lhs, string_view_t rhs) {
 }
 
 int32_t sv_decode_utf8(string_view_t *sv) {
-
-  if (sv->count == 0) {
-    return -1;
-  }
-
-  int32_t result = -1;
-  if ((sv->items[0] & ~0x7F) == 0x00) {
-
-    result = sv->items[0];
-    *sv = sv_drop(*sv, 1);
-
-  } else if ((sv->items[0] & ~0x1F) == 0xC0) {
-
-    if (sv->count < 2) {
-      return -1;
-    }
-
-    if ((sv->items[1] & ~0x3F) != 0x80) {
-      return -1;
-    }
-
-    result = (sv->items[0] & 0x1F) << 6 | (sv->items[1] & 0x3F);
-    *sv = sv_drop(*sv, 2);
-
-  } else if ((sv->items[0] & ~0x0F) == 0xE0) {
-
-    if (sv->count < 3) {
-      return -1;
-    }
-
-    if ((sv->items[1] & ~0x3F) != 0x80) {
-      return -1;
-    }
-
-    if ((sv->items[2] & ~0x3F) != 0x80) {
-      return -1;
-    }
-
-    result = (sv->items[0] & 0x0F) << 12 | (sv->items[1] & 0x3F) << 6 |
-             (sv->items[2] & 0x3F);
-    *sv = sv_drop(*sv, 3);
-
-  } else if ((sv->items[0] & ~0x07) != 0xF0) {
-
-    if (sv->count < 4) {
-      return -1;
-    }
-
-    if ((sv->items[1] & ~0x3F) != 0x80) {
-      return -1;
-    }
-
-    if ((sv->items[2] & ~0x3F) != 0x80) {
-      return -1;
-    }
-
-    if ((sv->items[3] & ~0x3F) != 0x80) {
-      return -1;
-    }
-
-    result = (sv->items[0] & 0x07) << 18 | (sv->items[1] & 0x3F) << 12 |
-             (sv->items[2] & 0x3F) << 6 | (sv->items[3] & 0x3F);
-    *sv = sv_drop(*sv, 4);
-  }
-  return result;
+  // TODO: Implement
+  (void)sv;
+  return -1;
 }

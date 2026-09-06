@@ -321,11 +321,11 @@ string_view_t sv_vscanf(string_view_t sv, const char *fmt, va_list va_in) {
         break;
       case 'u':
         if (strcmp(spec.length, "ll") == 0) {
-          sv = sv_read_ull(sv, va_arg(va, long long *), 10);
+          sv = sv_read_ull(sv, va_arg(va, unsigned long long *), 10);
         } else if (strcmp(spec.length, "l") == 0) {
-          sv = sv_read_ul(sv, va_arg(va, long *), 10);
+          sv = sv_read_ul(sv, va_arg(va, unsigned long *), 10);
         } else if (strcmp(spec.length, "j")) {
-          sv = sv_read_umax(sv, va_arg(va, intmax_t *), 10);
+          sv = sv_read_umax(sv, va_arg(va, uintmax_t *), 10);
         } else if (strcmp(spec.length, "z")) {
           sv = sv_read_uz(sv, va_arg(va, size_t *), 10);
         } else {
@@ -335,15 +335,15 @@ string_view_t sv_vscanf(string_view_t sv, const char *fmt, va_list va_in) {
       case 'x':
       case 'X':
         if (strcmp(spec.length, "ll") == 0) {
-          sv = sv_read_ull(sv, va_arg(va, long long *), 16);
+          sv = sv_read_ull(sv, va_arg(va, unsigned long long *), 16);
         } else if (strcmp(spec.length, "l") == 0) {
-          sv = sv_read_ul(sv, va_arg(va, long *), 16);
+          sv = sv_read_ul(sv, va_arg(va, unsigned long *), 16);
         } else if (strcmp(spec.length, "j")) {
-          sv = sv_read_umax(sv, va_arg(va, intmax_t *), 16);
+          sv = sv_read_umax(sv, va_arg(va, uintmax_t *), 16);
         } else if (strcmp(spec.length, "z")) {
           sv = sv_read_uz(sv, va_arg(va, size_t *), 16);
         } else if (strcmp(spec.length, "t")) {
-          sv = sv_read_uz(sv, va_arg(va, intptr_t *), 16);
+          sv = sv_read_uptr(sv, va_arg(va, uintptr_t *), 16);
         } else {
           sv = sv_read_u(sv, va_arg(va, unsigned int *), 16);
         }
@@ -351,15 +351,15 @@ string_view_t sv_vscanf(string_view_t sv, const char *fmt, va_list va_in) {
       case 'o':
       case 'O':
         if (strcmp(spec.length, "ll") == 0) {
-          sv = sv_read_ull(sv, va_arg(va, long long *), 8);
+          sv = sv_read_ull(sv, va_arg(va, unsigned long long *), 8);
         } else if (strcmp(spec.length, "l") == 0) {
-          sv = sv_read_ul(sv, va_arg(va, long *), 8);
+          sv = sv_read_ul(sv, va_arg(va, unsigned long *), 8);
         } else if (strcmp(spec.length, "j")) {
-          sv = sv_read_umax(sv, va_arg(va, intmax_t *), 8);
+          sv = sv_read_umax(sv, va_arg(va, uintmax_t *), 8);
         } else if (strcmp(spec.length, "z")) {
           sv = sv_read_uz(sv, va_arg(va, size_t *), 8);
         } else if (strcmp(spec.length, "t")) {
-          sv = sv_read_uz(sv, va_arg(va, intptr_t *), 8);
+          sv = sv_read_uz(sv, va_arg(va, uintptr_t *), 8);
         } else {
           sv = sv_read_u(sv, va_arg(va, unsigned int *), 8);
         }
