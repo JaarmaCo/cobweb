@@ -1,0 +1,32 @@
+[
+  [
+    {
+      "typename": "string_view_t",
+      "short": "sv",
+      "equals": "sv_equals",
+      "hash": "sv_hash",
+      "includes": [ "\"string_view.h\"" ]
+    },
+    {
+      "typename": "int",
+      "short": "i",
+      "equals": "equals_int",
+      "hash": "hash_int"
+    }
+  ],
+  [
+    {
+      "typename": "int",
+      "short": "i",
+      "equals": "equals_int",
+      "hash": "hash_int"
+    },
+    {
+      "typename": "string_view_t",
+      "short": "sv",
+      "equals": "sv_equals",
+      "hash": "sv_hash",
+      "includes": [ "\"string_view.h\"" ]
+    } 
+  ]
+]

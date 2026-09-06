@@ -72,7 +72,7 @@ static void check_read_until(string_builder_t *sb) {
 
 static void check_append_string_literal(string_builder_t *sb) {
   printf(INFO("--- Test check_append_string_literal"));
-  sb_append_string_literal(sb, SV("\"Did I studder?\"\n\xfe"), 0);
+  sb_append_string_literal(sb, SV("\"Did I studder?\"\n\xfe"));
 }
 
 static void run_test(void (*runner)(string_builder_t *), const char *expected) {

@@ -5,15 +5,39 @@
 #include "dynamic_array_char.h"
 #include "string_view.h"
 
+#define STRING_LITERAL_REQUEST_START_QUOTE -1
+#define STRING_LITERAL_REQUEST_END_QUOTE -2
+
 /**
  * Type for dynamically constructing NUL-terminated strings.
  */
 typedef dynamic_array_c string_builder_t;
 
 /**
+ * Deallocate any memory owned by the string builder.
+ */
+static inline void sb_destroy(string_builder_t *sb) { da_destroy_c(sb); }
+
+/**
+ * Reset the string builder so it contains an empty string.
+ */
+static inline void sb_reset(string_builder_t *sb) {
+  if (sb->count > 0) {
+    sb->items[0] = 0;
+  }
+  sb->count = 0;
+}
+
+/**
  * Gets a view into the string builder string.
  */
 string_view_t sb_view(const string_builder_t *sb);
+
+/**
+ * Gets an unmanaged NUL-terminated c-string containing the contents of the
+ * builder.
+ */
+char *sb_cstr(const string_builder_t *sb);
 
 /**
  * Sets a view of a string builder into the actual string builder contents by
@@ -54,18 +78,15 @@ char *sb_append_sv(string_builder_t *sb, string_view_t item);
  */
 
 /**
- * Append a string and format it as a string literal.
+ * Append a string and format it as an ASCII C string literal.
  *
  * @param sb String builder to append to.
  * @param item String containing the literal to append.
- * @param dialect Specifies the kind of string literal to append (use 0 for a
- *                C-like ASCII string literal).
  *
  * @return A pointer to the string builder string, or NULL if an allocation
  *         failure occured.
  */
-char *sb_append_string_literal(string_builder_t *sb, string_view_t item,
-                               int dialect);
+char *sb_append_string_literal(string_builder_t *sb, string_view_t item);
 
 /**
  * Joins strings with an intermediate delimiter.

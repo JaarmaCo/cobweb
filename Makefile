@@ -10,9 +10,21 @@ SOURCE_FILES := src/string_view.c \
 
 SOURCE_OBJECT_FILES := $(patsubst src/%.c,out/%.o,$(SOURCE_FILES))
 
-TEMPLATE_FILES := src/dynamic_array.h
-TEMPLATE_SOURCES := out/dynamic_array_int.c out/dynamic_array_int.h out/dynamic_array_char.c out/dynamic_array_char.h
-TEMPLATE_OBJECTS := out/dynamic_array_int.o out/dynamic_array_char.o
+TEMPLATE_FILES := src/dynamic_array.h src/hashmap.h
+TEMPLATE_SOURCES := \
+										out/dynamic_array_int.c \
+										out/dynamic_array_int.h \
+										out/dynamic_array_char.c \
+										out/dynamic_array_char.h \
+										out/hashmap_sv_i.h \
+										out/hashmap_sv_i.c \
+										out/hashmap_i_sv.h \
+										out/hashmap_i_sv.c
+TEMPLATE_OBJECTS := \
+										out/dynamic_array_int.o \
+										out/dynamic_array_char.o \
+										out/hashmap_sv_i.o \
+										out/hashmap_i_sv.o
 
 test: build-tests
 	./out/test/dynamic_array
@@ -26,6 +38,9 @@ clean:
 	rm -rf out
 
 out/dynamic_array_%.o: out/dynamic_array_%.c | out/
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+out/hashmap_%.o: out/hashmap_%.c | out/
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 out/string_builder.o: src/string_builder.c out/dynamic_array_char.h | out/
@@ -42,6 +57,9 @@ out/test/string_builder: test/string_builder.c $(SOURCE_OBJECT_FILES) | out/test
 
 out/dynamic_array_%.c out/dynamic_array_%.h: src/dynamic_array.h | out/
 	./c-template --infer $@ -o out -i src/dynamic_array.h
+
+out/hashmap_%.c out/hashmap_%.h: src/hashmap.h templates/sv-x-int.json | out/
+	./c-template -o out -i src/hashmap.h -J templates/sv-x-int.json
 
 out/:
 	mkdir -p out

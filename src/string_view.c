@@ -170,6 +170,18 @@ bool sv_equals(string_view_t lhs, string_view_t rhs) {
          strncmp(lhs.items, rhs.items, lhs.count) == 0;
 }
 
+size_t sv_hash(string_view_t sv) {
+#define FNV1A_PRIME UINT64_C(0x00000100000001b3)
+#define FNV1A_OFFSET UINT64_C(0xcbf29ce484222325)
+
+  uint64_t hash = FNV1A_OFFSET;
+  for (size_t i = 0; i < sv.count; ++i) {
+    hash *= FNV1A_PRIME;
+    hash ^= sv.items[i];
+  }
+  return (size_t)hash;
+}
+
 bool sv_subrange_of(string_view_t sv, string_view_t other) {
   const char *src_beg = sv.items, *src_end = sv.items + sv.count;
   const char *oth_beg = other.items, *oth_end = other.items + other.count;
@@ -192,10 +204,4 @@ int sv_compare(string_view_t lhs, string_view_t rhs) {
     }
     return 1;
   }
-}
-
-int32_t sv_decode_utf8(string_view_t *sv) {
-  // TODO: Implement
-  (void)sv;
-  return -1;
 }

@@ -179,6 +179,11 @@ static inline bool sv_contains_substr(string_view_t sv, string_view_t substr) {
 bool sv_equals(string_view_t lhs, string_view_t rhs);
 
 /**
+ * Gets the hash of a string view.
+ */
+size_t sv_hash(string_view_t sv);
+
+/**
  * Tests whether the other string view is a view into the same array as, and
  * within the given source view.
  *
@@ -275,19 +280,6 @@ string_view_t sv_read_ld(string_view_t sv, long double *out, int base);
 /**
  * @}
  */
-
-/**
- * Decodes the next UTF-8 codepoint from the specified string-view, then cuts
- * the view so that the characters of the decoded codepoint are removed.
- *
- * If an encoding error occurs, -1 is returned, and the string view is not
- * modified.
- *
- * @param[inout] sv View to extract a codepoint from, is set to the remaining
- *                  view after the codepoint when this function returns.
- * @return The decoded UTF-8 codepoint, or -1 if an encoding error occured.
- */
-int32_t sv_decode_utf8(string_view_t *sv);
 
 #define STRING_VIEW_H_
 #endif

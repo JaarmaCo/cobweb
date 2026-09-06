@@ -9,6 +9,10 @@ string_view_t sb_view(const string_builder_t *sb) {
   };
 }
 
+char *sb_cstr(const string_builder_t *sb) {
+  return sb ? (sb->count > 0 ? sb->items : "") : "";
+}
+
 string_view_t sb_canonicalize_view(string_builder_t *sb, string_view_t view) {
   string_view_t sbv = sb_view(sb);
   if (!sv_subrange_of(sbv, view)) {
@@ -49,10 +53,7 @@ char *sb_append_cstr(string_builder_t *sb, const char *cstr) {
   return sb->items;
 }
 
-char *sb_append_string_literal(string_builder_t *sb, string_view_t literal,
-                               int dialect) {
-  (void)dialect;
-
+char *sb_append_string_literal(string_builder_t *sb, string_view_t literal) {
   if (!da_reserve_c(sb, literal.count + 3)) {
     return NULL;
   }

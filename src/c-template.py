@@ -16,7 +16,9 @@ DEFAULT_TEMPLATE = [
             "includes": [
                 "<stdint.h>"
             ],
-            "short": "i8"
+            "short": "i8",
+            "hash": "hash_int8",
+            "equals": "equals_int8"
         }
     ],
     [
@@ -25,7 +27,9 @@ DEFAULT_TEMPLATE = [
             "includes": [
                 "<stdint.h>",
             ],
-            "short": "i16"
+            "short": "i16",
+            "hash": "hash_int16",
+            "equals": "equals_int16"
         }
     ],
     [
@@ -34,7 +38,9 @@ DEFAULT_TEMPLATE = [
             "includes": [
                 "<stdint.h>",
             ],
-            "short": "i32"
+            "short": "i32",
+            "hash": "hash_int32",
+            "equals": "equals_int32"
         }
     ],
     [
@@ -43,7 +49,9 @@ DEFAULT_TEMPLATE = [
             "includes": [
                 "<stdint.h>",
             ],
-            "short": "i64"
+            "short": "i64",
+            "hash": "hash_int64",
+            "equals": "equals_int64"
         }
     ],
     [
@@ -52,7 +60,9 @@ DEFAULT_TEMPLATE = [
             "includes": [
                 "<stdint.h>"
             ],
-            "short": "u8"
+            "short": "u8",
+            "hash": "hash_uint8",
+            "equals": "equals_uint8"
         }
     ],
     [
@@ -61,7 +71,9 @@ DEFAULT_TEMPLATE = [
             "includes": [
                 "<stdint.h>",
             ],
-            "short": "u16"
+            "short": "u16",
+            "hash": "hash_uint16",
+            "equals": "equals_uint16"
         }
     ],
     [
@@ -70,7 +82,9 @@ DEFAULT_TEMPLATE = [
             "includes": [
                 "<stdint.h>",
             ],
-            "short": "u32"
+            "short": "u32",
+            "hash": "hash_uint32",
+            "equals": "equals_uint32"
         }
     ],
     [
@@ -79,7 +93,9 @@ DEFAULT_TEMPLATE = [
             "includes": [
                 "<stdint.h>",
             ],
-            "short": "u64"
+            "short": "u64",
+            "hash": "hash_uint64",
+            "equals": "equals_uint64"
         }
     ],
     [
@@ -88,7 +104,9 @@ DEFAULT_TEMPLATE = [
             "includes": [
                 "<stddef.h>",
             ],
-            "short": "uz"
+            "short": "uz",
+            "hash": "hash_size",
+            "equals": "equals_size"
         }
     ],
     [
@@ -97,7 +115,9 @@ DEFAULT_TEMPLATE = [
             "includes": [
                 "<stddef.h>",
             ],
-            "short": "iz"
+            "short": "iz",
+            "hash": "hash_ptrdiff",
+            "equals": "equals_ptrdiff"
         }
     ],
     [
@@ -106,7 +126,9 @@ DEFAULT_TEMPLATE = [
             "includes": [
                 "<stdint.h>",
             ],
-            "short": "iptr"
+            "short": "iptr",
+            "hash": "hash_intmax",
+            "equals": "equals_intmax"
         }
     ],
     [
@@ -115,67 +137,89 @@ DEFAULT_TEMPLATE = [
             "includes": [
                 "<stdint.h>",
             ],
-            "short": "uptr"
+            "short": "uptr",
+            "hash": "hash_uintmax",
+            "equals": "equals_uintmax"
         }
     ],
     [
         {
             "typename": "float",
-            "short": "f"
+            "short": "f",
+            "hash": "hash_float",
+            "equals": "equals_float"
         }
     ],
     [
         {
             "typename": "double",
-            "short": "d"
+            "short": "d",
+            "hash": "hash_double",
+            "equals": "equals_double"
         }
     ],
     [
         {
             "typename": "long double",
-            "short": "ld"
+            "short": "ld",
+            "hash": "hash_long_double",
+            "equals": "equals_long_double"
         }
     ],
     [
         {
             "typename": "int",
-            "short": "i"
+            "short": "i",
+            "hash": "hash_int",
+            "equals": "equals_int"
         }
     ],
     [
         {
             "typename": "unsigned int",
-            "short": "u"
+            "short": "u",
+            "hash": "hash_uint",
+            "equals": "equals_uint"
         }
     ],
     [
         {
             "typename": "long",
-            "short": "l"
+            "short": "l",
+            "hash": "hash_long",
+            "equals": "equals_long"
         }
     ],
     [
         {
             "typename": "unsigned long",
-            "short": "ul"
+            "short": "ul",
+            "hash": "hash_ulong",
+            "equals": "equals_ulong"
         }
     ],
     [
         {
             "typename": "long long",
-            "short": "ll"
+            "short": "ll",
+            "hash": "hash_llong",
+            "equals": "equals_llong"
         }
     ],
     [
         {
             "typename": "unsigned long long",
-            "short": "ull"
+            "short": "ull",
+            "hash": "hash_ullong",
+            "equals": "equals_ullong"
         }
     ],
     [
         {
             "typename": "void *",
-            "short": "ptr"
+            "short": "ptr",
+            "hash": "hash_voidp",
+            "equals": "equals_voidp"
         }
     ],
     [
@@ -184,19 +228,25 @@ DEFAULT_TEMPLATE = [
             "includes": [
                 "<stdbool.h>"
             ],
-            "short": "b"
+            "short": "b",
+            "hash": "hash_bool",
+            "equals": "equals_bool"
         }
     ],
     [
         {
             "typename": "char",
-            "short": "c"
+            "short": "c",
+            "hash": "hash_char",
+            "equals": "equals_char"
         }
     ],
     [
         {
             "typename": "wchar_t",
-            "short": "wc"
+            "short": "wc",
+            "hash": "hash_wchar",
+            "equals": "equals_wchar"
         }
     ]
 ]
