@@ -171,6 +171,10 @@ bool grow(hashmap *hm) {
 
 hashmap_entry *find(const hashmap *hm, TKey key) {
 
+  if (hm->count == 0) {
+    return NULL;
+  }
+
   size_t hash = hash_key(key);
   hash = hash == 0 ? 1 : hash;
 

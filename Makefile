@@ -81,7 +81,7 @@ out/json.o: \
 out/%.o: src/%.c | out/
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-out/test/dynamic_array: test/dynamic_array.c out/dynamic_array_int.o out/allocator.o | out/test/
+out/test/dynamic_array: test/dynamic_array.c $(SOURCE_OBJECT_FILES) $(TEMPLATE_OBJECTS) | out/test/
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ test/dynamic_array.c $(SOURCE_OBJECT_FILES) $(TEMPLATE_OBJECTS)
 
 out/test/string_builder: test/string_builder.c $(SOURCE_OBJECT_FILES) | out/test/

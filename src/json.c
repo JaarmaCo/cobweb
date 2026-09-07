@@ -421,37 +421,25 @@ bool json_get(json_node_t node, json_type_t type, ...) {
     break;
   case JSON_NUMBER:
     if (node.type == JSON_NUMBER) {
-      *va_arg(va, json_number_t *) = node.pool->numbers[node.node_id - 1];
+      *va_arg(va, json_number_t *) = json_as_number(node);
       match = true;
     }
     break;
   case JSON_STRING:
     if (node.type == JSON_STRING) {
-      json_string_t *out = va_arg(va, json_string_t *);
-      out->allocator = node.pool->allocator;
-      out->items = node.pool->string_items[node.node_id - 1];
-      out->count = node.pool->string_counts[node.node_id - 1];
-      out->capacity = node.pool->string_capacities[node.node_id - 1];
+      *va_arg(va, json_string_t *) = json_as_string(node);
       match = true;
     }
     break;
   case JSON_ARRAY:
     if (node.type == JSON_ARRAY) {
-      json_array_t *out = va_arg(va, json_array_t *);
-      out->allocator = node.pool->allocator;
-      out->items = node.pool->array_items[node.node_id - 1];
-      out->count = node.pool->array_counts[node.node_id - 1];
-      out->capacity = node.pool->array_capacities[node.node_id - 1];
+      *va_arg(va, json_array_t *) = json_as_array(node);
       match = true;
     }
     break;
   case JSON_OBJECT:
     if (node.type == JSON_OBJECT) {
-      json_object_t *out = va_arg(va, json_object_t *);
-      out->allocator = node.pool->allocator;
-      out->items = node.pool->object_items[node.node_id - 1];
-      out->count = node.pool->object_counts[node.node_id - 1];
-      out->capacity = node.pool->object_capacities[node.node_id - 1];
+      *va_arg(va, json_object_t *) = json_as_object(node);
       match = true;
     }
     break;
@@ -759,4 +747,142 @@ void json_dumpf(json_node_t node, FILE *f) {
   json_dumps(node, &sb);
   fputs(sb_cstr(&sb), f);
   sb_destroy(&sb);
+}
+
+bool json_equals(json_node_t lhs, json_node_t rhs) {
+
+  if (lhs.node_id == 0) {
+    return rhs.node_id == 0 || rhs.type == JSON_NULL;
+  }
+
+  if (rhs.node_id == 0) {
+    return lhs.type == JSON_NULL;
+  }
+
+  if (lhs.type != rhs.type) {
+    return false;
+  }
+
+  if (lhs.node_id == rhs.node_id) {
+    return true;
+  }
+
+  string_view_t key = {0};
+  json_node_t value = {0};
+
+  switch (lhs.type) {
+  case JSON_FALSE:
+  case JSON_TRUE:
+  case JSON_NULL:
+    return true;
+  case JSON_NUMBER: {
+    json_number_t x = 0, y = 0;
+    json_get(lhs, JSON_NUMBER, &x);
+    json_get(rhs, JSON_NUMBER, &y);
+    return x == y;
+  }
+  case JSON_STRING: {
+    json_string_t x = {0}, y = {0};
+    json_get(lhs, JSON_STRING, &x);
+    json_get(rhs, JSON_STRING, &y);
+    return sv_equals(sb_view(&x), sb_view(&y));
+  }
+  case JSON_ARRAY:
+    if (json_count(lhs) != json_count(rhs)) {
+      return false;
+    }
+    for (size_t i = 0; i < json_count(lhs); ++i) {
+      if (!json_equals(*json_at(lhs, i), *json_at(rhs, i))) {
+        return false;
+      }
+    }
+    return true;
+  case JSON_OBJECT:
+    if (json_count(lhs) != json_count(rhs)) {
+      return false;
+    }
+    for (size_t state = 0;
+         json_iterate_properties(lhs, &state, &key, &value);) {
+      json_node_t *other_value = json_find(rhs, key);
+      if (!other_value || !json_equals(value, *other_value)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+size_t json_hash(json_node_t x) {
+  if (x.node_id == 0 || x.type == JSON_NULL) {
+    return 0;
+  }
+  switch (x.type) {
+  case JSON_TRUE:
+  case JSON_FALSE:
+  case JSON_NULL:
+    return hash_int((int)x.type);
+  case JSON_STRING: {
+    json_string_t string = {0};
+    json_get(x, JSON_STRING, &string);
+    return sv_hash(sb_view(&string));
+  }
+  case JSON_NUMBER: {
+    json_number_t number = 0;
+    json_get(x, JSON_NUMBER, &number);
+    return hash_long_double(number);
+  }
+  case JSON_ARRAY: {
+    size_t hash = (size_t)JSON_ARRAY;
+    for (size_t i = 0; i < json_count(x); ++i) {
+      hash = hash_combine(hash, json_hash(*json_at(x, i)));
+    }
+    return hash;
+  }
+  case JSON_OBJECT: {
+    size_t hash = (size_t)JSON_OBJECT;
+    string_view_t key = {0};
+    json_node_t value = {0};
+    for (size_t state = 0; json_iterate_properties(x, &state, &key, &value);) {
+      size_t entry_hash = hash_combine(sv_hash(key), json_hash(value));
+      hash = hash_combine(hash, entry_hash);
+    }
+    return hash;
+  }
+  }
+
+  fprintf(stderr, "Unreachable");
+  abort();
+}
+
+bool json_as_boolean(json_node_t node) { return node.type == JSON_TRUE; }
+
+json_number_t json_as_number(json_node_t node) {
+  return node.pool->numbers[node.node_id - 1];
+}
+
+json_string_t json_as_string(json_node_t node) {
+  return (json_string_t){
+      .allocator = node.pool->allocator,
+      .items = node.pool->string_items[node.node_id - 1],
+      .count = node.pool->string_counts[node.node_id - 1],
+      .capacity = node.pool->string_capacities[node.node_id - 1],
+  };
+}
+
+json_array_t json_as_array(json_node_t node) {
+  return (json_array_t){
+      .allocator = node.pool->allocator,
+      .items = node.pool->array_items[node.node_id - 1],
+      .count = node.pool->array_counts[node.node_id - 1],
+      .capacity = node.pool->array_capacities[node.node_id - 1],
+  };
+}
+
+json_object_t json_as_object(json_node_t node) {
+  return (json_object_t){
+      .allocator = node.pool->allocator,
+      .items = (void *)node.pool->object_items[node.node_id - 1],
+      .count = node.pool->object_counts[node.node_id - 1],
+      .capacity = node.pool->object_capacities[node.node_id - 1],
+  };
 }

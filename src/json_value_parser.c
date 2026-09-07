@@ -71,9 +71,16 @@ static bool push_frame(json_parser_t *parser, json_type_t new_type) {
   }
 
   state_t *state = parser->user4;
-  memset(&state->stack_frames[state->stack_size++], 0, sizeof(parser_frame_t));
+  json_pool_t *pool = parser->user1;
+  parser_frame_t *frame = &state->stack_frames[state->stack_size++];
+  memset(frame, 0, sizeof(parser_frame_t));
 
-  state->stack_frames[state->stack_size - 1].type = new_type;
+  frame->type = new_type;
+  if (new_type == JSON_ARRAY) {
+    frame->array_state.array = json_new(pool, JSON_ARRAY);
+  } else {
+    frame->object_state.object = json_new(pool, JSON_OBJECT);
+  }
   return true;
 }
 
@@ -135,6 +142,8 @@ static json_node_t scalar_value(json_parser_t *parser, json_type_t type) {
   case JSON_NUMBER: {
     json_number_t number = 0;
     sv_read_ld(sb_view(&parser->scratch), &number, 10);
+    sb_destroy(&parser->scratch);
+    parser->scratch = (json_string_t){.allocator = pool->allocator};
     return json_new(pool, JSON_NUMBER, number);
   }
   }
@@ -144,33 +153,20 @@ static json_node_t scalar_value(json_parser_t *parser, json_type_t type) {
   }
 }
 
-// Extracts the value of the most recently parsed item
-static json_node_t value(json_parser_t *parser, json_type_t type) {
-  switch (type) {
-  case JSON_ARRAY:
-  case JSON_OBJECT:
-    return pop_frame(parser);
-  default:
-    return scalar_value(parser, type);
-  }
-}
-
 // Handles event that signal that a value is ready
-static bool on_value(json_parser_t *parser, json_type_t type) {
+static bool on_value(json_parser_t *parser, json_node_t value) {
   if (object(parser)) {
     object_state_t *state = object(parser);
-
-    json_insert(state->object, sb_view(&state->current_key),
-                value(parser, type));
-    state->current_key.count = 0;
+    json_insert(state->object, sb_view(&state->current_key), value);
+    sb_destroy(&state->current_key);
     return true;
   } else if (array(parser)) {
     array_state_t *state = array(parser);
-    json_append(state->array, value(parser, type));
+    json_append(state->array, value);
     return true;
   } else {
     state_t *state = parser->user4;
-    state->result = value(parser, type);
+    state->result = value;
     return true;
   }
 }
@@ -190,10 +186,10 @@ static bool on_event(json_parser_t *parser, json_parser_event_t event,
                      json_type_t type) {
   switch (event) {
   case JSON_EVENT_SCALAR:
+    return on_value(parser, scalar_value(parser, type));
   case JSON_EVENT_OBJECT_END:
   case JSON_EVENT_ARRAY_END:
-    // Either closing a context, or getting a scalar -> value is ready
-    return on_value(parser, type);
+    return on_value(parser, pop_frame(parser));
   case JSON_EVENT_OBJECT_KEY:
     // Attatch the object key
     return on_object_key(parser);
@@ -249,6 +245,9 @@ void json_destroy_value_parser(json_parser_t *parser) {
                     _Alignof(parser_frame_t));
   // Free the state
   allocator_release(pool->allocator, state, sizeof(state_t), _Alignof(state_t));
+
+  // Free the scratch buffer
+  sb_destroy(&parser->scratch);
 
   memset(parser, 0, sizeof *parser);
 }

@@ -361,10 +361,18 @@ bool json_parse_object(json_parser_t *parser) {
     return event(parser, JSON_EVENT_OBJECT_END, JSON_OBJECT);
   }
 
-  event(parser, JSON_EVENT_OBJECT_KEY, JSON_OBJECT);
-  if (!json_parse_string(parser)) {
+  if (!json_parse_string_no_event(parser)) {
     return false;
   }
+  event(parser, JSON_EVENT_OBJECT_KEY, JSON_OBJECT);
+
+  skip_spaces(parser);
+  if (current(parser) != ':') {
+    return error(parser, JSON_ERROR_UNRECOGNIZED_TOKEN,
+                 "Expected ':' after object property key.");
+  }
+
+  next(parser);
 
   if (!json_parse(parser)) {
     return false;

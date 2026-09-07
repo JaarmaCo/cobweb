@@ -361,6 +361,19 @@ bool json_iterate_properties(json_node_t node, size_t *state,
 bool json_get(json_node_t node, json_type_t type, ...);
 
 /**
+ * Unchecked getter for a particular JSON value type.
+ * @{
+ */
+bool json_as_boolean(json_node_t node);
+json_number_t json_as_number(json_node_t node);
+json_string_t json_as_string(json_node_t node);
+json_array_t json_as_array(json_node_t node);
+json_object_t json_as_object(json_node_t node);
+/**
+ * @}
+ */
+
+/**
  * Insert a new item into a JSON object.
  *
  * @param node Object node to insert a value into.
@@ -481,6 +494,16 @@ void json_dumpf(json_node_t node, FILE *f);
 /**
  * @}
  */
+
+/**
+ * Check whether two nodes are equal.
+ */
+bool json_equals(json_node_t lhs, json_node_t rhs);
+
+/**
+ * Hash a JSON value.
+ */
+size_t json_hash(json_node_t x);
 
 #define JSON_H_
 #endif

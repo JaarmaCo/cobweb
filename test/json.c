@@ -66,13 +66,13 @@ static json_node_t check_parse_true(json_pool_t *pool) {
 }
 
 static json_node_t check_parse_false(json_pool_t *pool) {
-  printf(INFO("--- Test check_parse_true"));
+  printf(INFO("--- Test check_parse_false"));
   string_view_t contents = SV("false");
   return json_loads(pool, &contents);
 }
 
 static json_node_t check_parse_null(json_pool_t *pool) {
-  printf(INFO("--- Test check_parse_true"));
+  printf(INFO("--- Test check_parse_null"));
   string_view_t contents = SV("null");
   return json_loads(pool, &contents);
 }
@@ -121,7 +121,7 @@ static json_node_t check_parse_singleton_object(json_pool_t *pool) {
 
 static json_node_t check_parse_object(json_pool_t *pool) {
   printf(INFO("--- Test check_parse_object"));
-  string_view_t contents = SV("{ \"Able\": 1, \"Cain\": 2, \"Differ\": 3 }");
+  string_view_t contents = SV("{ \"Cain\": 2, \"Able\": 1, \"Differ\": 3 }");
   return json_loads(pool, &contents);
 }
 
@@ -208,6 +208,6 @@ int main(void) {
   run_test(check_parse_array, SV("[1,2,3,4]"));
   run_test(check_parse_empty_object, SV("{}"));
   run_test(check_parse_singleton_object, SV("{\"Foxy\":true}"));
-  run_test(check_parse_object, SV("{\"Able\":1,\"Cain\":2,\"Differ\":3}"));
+  run_test(check_parse_object, SV("{\"Cain\":2,\"Able\":1,\"Differ\":3}"));
   return 0;
 }
