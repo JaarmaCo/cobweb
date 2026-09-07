@@ -225,13 +225,14 @@ string_view_t sv_read_ld(string_view_t sv, long double *out, int base) {
 
   // Parse fractional part
   long double frac = 0.0L;
+  long double b = base;
   while (sv.count > 0) {
     int d = digit_of_base(*sv.items, base);
     if (d == -1) {
       break;
     }
-    frac += d;
-    frac /= base;
+    frac += (long double)d / b;
+    b *= base;
     sv = sv_drop(sv, 1);
   }
 

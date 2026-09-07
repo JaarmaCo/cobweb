@@ -59,6 +59,72 @@ static json_node_t check_new_object(json_pool_t *pool) {
   return json_new(pool, JSON_OBJECT);
 }
 
+static json_node_t check_parse_true(json_pool_t *pool) {
+  printf(INFO("--- Test check_parse_true"));
+  string_view_t contents = SV("true");
+  return json_loads(pool, &contents);
+}
+
+static json_node_t check_parse_false(json_pool_t *pool) {
+  printf(INFO("--- Test check_parse_true"));
+  string_view_t contents = SV("false");
+  return json_loads(pool, &contents);
+}
+
+static json_node_t check_parse_null(json_pool_t *pool) {
+  printf(INFO("--- Test check_parse_true"));
+  string_view_t contents = SV("null");
+  return json_loads(pool, &contents);
+}
+
+static json_node_t check_parse_number(json_pool_t *pool) {
+  printf(INFO("--- Test check_parse_number"));
+  string_view_t contents = SV("3.14");
+  return json_loads(pool, &contents);
+}
+
+static json_node_t check_parse_string(json_pool_t *pool) {
+  printf(INFO("--- Test check_parse_string"));
+  string_view_t contents = SV("\"\\\"Hello,\\\\ world!\\\"\"");
+  return json_loads(pool, &contents);
+}
+
+static json_node_t check_parse_empty_array(json_pool_t *pool) {
+  printf(INFO("--- Test check_parse_empty_array"));
+  string_view_t contents = SV("[ ]");
+  return json_loads(pool, &contents);
+}
+
+static json_node_t check_parse_singleton_array(json_pool_t *pool) {
+  printf(INFO("--- Test check_parse_singleton_array"));
+  string_view_t contents = SV("[ 1 ]");
+  return json_loads(pool, &contents);
+}
+
+static json_node_t check_parse_array(json_pool_t *pool) {
+  printf(INFO("--- Test check_parse_array"));
+  string_view_t contents = SV("[ 1, 2, 3, 4 ]");
+  return json_loads(pool, &contents);
+}
+
+static json_node_t check_parse_empty_object(json_pool_t *pool) {
+  printf(INFO("--- Test check_parse_empty_object"));
+  string_view_t contents = SV("{}");
+  return json_loads(pool, &contents);
+}
+
+static json_node_t check_parse_singleton_object(json_pool_t *pool) {
+  printf(INFO("--- Test check_parse_singleton_object"));
+  string_view_t contents = SV("{ \"Foxy\": true }");
+  return json_loads(pool, &contents);
+}
+
+static json_node_t check_parse_object(json_pool_t *pool) {
+  printf(INFO("--- Test check_parse_object"));
+  string_view_t contents = SV("{ \"Able\": 1, \"Cain\": 2, \"Differ\": 3 }");
+  return json_loads(pool, &contents);
+}
+
 static void run_test(json_node_t (*test)(json_pool_t *pool),
                      string_view_t expected) {
 
@@ -132,5 +198,16 @@ int main(void) {
   run_test(check_object_construct,
            SV("{\"aaa\":true,\"bbb\":false,\"ccc\":100}"));
   run_test(check_array_construct, SV("[1,2,3,4,5]"));
+  run_test(check_parse_true, SV("true"));
+  run_test(check_parse_false, SV("false"));
+  run_test(check_parse_null, SV("null"));
+  run_test(check_parse_number, SV("3.14"));
+  run_test(check_parse_string, SV("\"\\\"Hello,\\\\ world!\\\"\""));
+  run_test(check_parse_empty_array, SV("[]"));
+  run_test(check_parse_singleton_array, SV("[1]"));
+  run_test(check_parse_array, SV("[1,2,3,4]"));
+  run_test(check_parse_empty_object, SV("{}"));
+  run_test(check_parse_singleton_object, SV("{\"Foxy\":true}"));
+  run_test(check_parse_object, SV("{\"Able\":1,\"Cain\":2,\"Differ\":3}"));
   return 0;
 }
