@@ -31,9 +31,93 @@ string_view_t sv_take(string_view_t sv, size_t count) {
   return sv_substr(sv, 0, count);
 }
 
+string_view_t sv_take_while(string_view_t sv, int (*pred)(int)) {
+  size_t i;
+  for (i = 0; i < sv.count; ++i) {
+    if (!pred(sv.items[i])) {
+      break;
+    }
+  }
+  return sv_take(sv, i);
+}
+
+string_view_t sv_take_while_usr(string_view_t sv, int (*pred)(int, void *),
+                                void *user) {
+  size_t i;
+  for (i = 0; i < sv.count; ++i) {
+    if (!pred(sv.items[i], user)) {
+      break;
+    }
+  }
+  return sv_take(sv, i);
+}
+
+string_view_t sv_take_for(string_view_t sv, int (*pred)(int), size_t count) {
+  size_t i;
+  for (i = 0; i < sv.count && i < count; ++i) {
+    if (!pred(sv.items[i])) {
+      break;
+    }
+  }
+  return sv_take(sv, count);
+}
+
+string_view_t sv_take_for_usr(string_view_t sv, int (*pred)(int, void *),
+                              void *user, size_t count) {
+  size_t i;
+  for (i = 0; i < sv.count && i < count; ++i) {
+    if (!pred(sv.items[i], user)) {
+      break;
+    }
+  }
+  return sv_take(sv, count);
+}
+
 string_view_t sv_drop(string_view_t sv, size_t count) {
   assert(count <= sv.count);
   return sv_substr(sv, count, sv.count - count);
+}
+
+string_view_t sv_drop_while(string_view_t sv, int (*pred)(int)) {
+  size_t i;
+  for (i = 0; i < sv.count; ++i) {
+    if (!pred(sv.items[i])) {
+      break;
+    }
+  }
+  return sv_drop(sv, i);
+}
+
+string_view_t sv_drop_while_usr(string_view_t sv, int (*pred)(int, void *),
+                                void *user) {
+  size_t i;
+  for (i = 0; i < sv.count; ++i) {
+    if (!pred(sv.items[i], user)) {
+      break;
+    }
+  }
+  return sv_drop(sv, i);
+}
+
+string_view_t sv_drop_for(string_view_t sv, int (*pred)(int), size_t count) {
+  size_t i;
+  for (i = 0; i < sv.count && i < count; ++i) {
+    if (!pred(sv.items[i])) {
+      break;
+    }
+  }
+  return sv_drop(sv, count);
+}
+
+string_view_t sv_drop_for_usr(string_view_t sv, int (*pred)(int, void *),
+                              void *user, size_t count) {
+  size_t i;
+  for (i = 0; i < sv.count && i < count; ++i) {
+    if (!pred(sv.items[i], user)) {
+      break;
+    }
+  }
+  return sv_drop(sv, count);
 }
 
 string_view_t sv_cut_ch(string_view_t *sv, char delim) {

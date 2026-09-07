@@ -39,19 +39,43 @@ string_view_t sv_substr(string_view_t sv, size_t index, size_t count);
 
 /**
  * Gets a substring of the string-view that starts at the beginning of the
- * source string and contains count characters.
+ * source string and contains count characters. If a predicate is provided,
+ * only the characters that match the predicate are included.
  *
  * @param count Number of characters in the substring.
+ * @param pred Predicate that has to match every taken character.
+ * @param user User-defined argument to pass to the predicate.
+ * @{
  */
+// clang-format off
 string_view_t sv_take(string_view_t sv, size_t count);
+string_view_t sv_take_while(string_view_t sv, int (*pred)(int));
+string_view_t sv_take_while_usr(string_view_t sv, int (*pred)(int, void *), void *user);
+string_view_t sv_take_for(string_view_t sv, int (*pred)(int), size_t count);
+string_view_t sv_take_for_usr(string_view_t sv, int (*pred)(int, void *), void *user, size_t count);
+/**
+ * @}
+ */
 
 /**
  * Gets a substring that starts count characters from the start of the source
- * string, and contains all remaining characters.
+ * string, and contains all remaining characters. If a predicate is provided,
+ * only the characters matching the predicate are skipped.
  *
  * @param count Number of characters to exclude from the substring.
+ * @param pred Predicate to match for every dropped character.
+ * @param user User-defind argument to pass to the predicate.
+ * @{
  */
 string_view_t sv_drop(string_view_t sv, size_t count);
+string_view_t sv_drop_while(string_view_t sv, int(*pred)(int));
+string_view_t sv_drop_while_usr(string_view_t sv, int(*pred)(int, void *), void *user);
+string_view_t sv_drop_for(string_view_t sv, int(*pred)(int), size_t count);
+string_view_t sv_drop_for_usr(string_view_t sv, int(*pred)(int, void *), void *user, size_t count);
+// clang-format on
+/**
+ * @}
+ */
 
 /**
  * Cut a string by a delimiter. This function returns the part of the string,

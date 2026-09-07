@@ -33,6 +33,7 @@ typedef int TValue;
 #define find hm_find
 #define destroy hm_destroy
 #define grow hm_grow
+#define destroy hm_destroy
 
 typedef struct hashmap_entry {
   TKey key;
@@ -46,6 +47,11 @@ typedef struct hashmap {
   size_t capacity;
   allocator_t *allocator;
 } hashmap;
+
+/**
+ * Free all memory owned by the given hashmap.
+ */
+void destroy(hashmap *hm);
 
 /**
  * Insert an entry into the hashmap.
@@ -115,6 +121,16 @@ bool delete_(hashmap *hm, TKey key);
 
 #include <assert.h>
 #include <string.h>
+
+void destroy(hashmap *hm) {
+  if (!hm || !hm->items) {
+    return;
+  }
+  allocator_release(hm->allocator, hm->items,
+                    hm->capacity * sizeof(hashmap_entry),
+                    _Alignof(hashmap_entry));
+  memset(hm, 0, sizeof *hm);
+}
 
 bool grow(hashmap *hm) {
   const size_t DEFAULT_SIZE = 4;

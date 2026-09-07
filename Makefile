@@ -29,10 +29,11 @@ TEMPLATE_OBJECTS := \
 test: build-tests
 	./out/test/dynamic_array
 	./out/test/string_builder
+	./out/test/hashmap
 
 build-templates: $(TEMPLATE_SOURCES) $(TEMPLATE_OBJECTS)
 
-build-tests: build-templates out/test/dynamic_array out/test/string_builder
+build-tests: build-templates out/test/dynamic_array out/test/string_builder out/test/hashmap
 
 clean:
 	rm -rf out
@@ -54,6 +55,9 @@ out/test/dynamic_array: test/dynamic_array.c out/dynamic_array_int.o out/allocat
 
 out/test/string_builder: test/string_builder.c $(SOURCE_OBJECT_FILES) | out/test/
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ test/string_builder.c $(SOURCE_OBJECT_FILES) out/dynamic_array_char.o
+
+out/test/hashmap: test/hashmap.c $(TEMPLATE_OBJECTS) $(SOURCE_OBJECT_FILES) | out/test/
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ test/hashmap.c $(SOURCE_OBJECT_FILES) $(TEMPLATE_OBJECTS)
 
 out/dynamic_array_%.c out/dynamic_array_%.h: src/dynamic_array.h | out/
 	./c-template --infer $@ -o out -i src/dynamic_array.h
