@@ -461,12 +461,34 @@ bool json_get(json_node_t node, json_type_t type, ...) {
   return match;
 }
 
+static void persist_string(json_pool_t *pool, string_view_t *string) {
+  json_string_t builder = {
+      .allocator = pool->allocator,
+  };
+
+  if (!sb_append_sv(&builder, *string)) {
+    handle_error(pool);
+  }
+
+  if (json_new_string(pool, builder).node_id == 0) {
+    handle_error(pool);
+  }
+
+  *string = sb_view(&builder);
+}
+
 bool json_insert(json_node_t node, string_view_t key, json_node_t new_node) {
 
   json_object_t object;
   if (!json_get(node, JSON_OBJECT, &object)) {
     return false;
   }
+
+  if (hm_find_sv_json(&object, key)) {
+    return false;
+  }
+
+  persist_string(node.pool, &key);
 
   if (hm_insert_sv_json(&object, key, new_node)) {
     json_update_object_node(node, object);
@@ -482,8 +504,9 @@ bool json_replace(json_node_t node, string_view_t key, json_node_t new_node) {
     return false;
   }
 
-  if (hm_replace_sv_json(&object, key, new_node)) {
-    json_update_object_node(node, object);
+  hashmap_entry_sv_json *entry = hm_find_sv_json(&object, key);
+  if (entry) {
+    entry->value = new_node;
     return true;
   }
   return false;
@@ -496,7 +519,15 @@ void json_put(json_node_t node, string_view_t key, json_node_t new_node) {
     return;
   }
 
-  if (!hm_put_sv_json(&object, key, new_node)) {
+  hashmap_entry_sv_json *entry = hm_find_sv_json(&object, key);
+  if (entry) {
+    entry->value = new_node;
+    return;
+  }
+
+  persist_string(node.pool, &key);
+
+  if (!hm_insert_sv_json(&object, key, new_node)) {
     handle_error(node.pool);
   }
   json_update_object_node(node, object);

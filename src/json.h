@@ -6,6 +6,15 @@
 #include "string_builder.h"
 #include "string_view.h"
 
+#define JSON_ERROR_UNRECOGNIZED_TOKEN 1
+#define JSON_ERROR_UNEXPECTED_EOF 2
+#define JSON_ERROR_INVALID_START_OF_STRING 3
+#define JSON_ERROR_INVALID_START_OF_ARRAY 4
+#define JSON_ERROR_INVALID_START_OF_OBJECT 5
+#define JSON_ERROR_INVALID_ESCAPE_SEQUENCE 6
+#define JSON_WARNING_UNICODE_ESCAPE_SEQUENCES_NOT_SUPPORTED 100
+#define JSON_ERROR_MEMORY_ALLOCATION_FAILED -99
+
 typedef struct hashmap_sv_json json_object_t;
 typedef struct dynamic_array_json json_array_t;
 typedef string_builder_t json_string_t;
@@ -13,6 +22,7 @@ typedef long double json_number_t;
 typedef uint32_t json_id_t;
 typedef struct json_pool json_pool_t;
 typedef struct json_node json_node_t;
+typedef struct json_parser json_parser_t;
 
 typedef enum json_type {
   JSON_NULL,
@@ -23,6 +33,47 @@ typedef enum json_type {
   JSON_ARRAY,
   JSON_OBJECT,
 } json_type_t;
+
+/**
+ * Enumerates the different parser events that can occur when parsing a JSON
+ * document.
+ */
+typedef enum json_parser_event {
+
+  /**
+   * A new scalar element was read into the parser.
+   *
+   * If the scalar is a string, or number then it's value is present in the
+   * parser scratch buffer.
+   */
+  JSON_EVENT_SCALAR,
+
+  /**
+   * Encountered the start of an object (I.e '{')
+   */
+  JSON_EVENT_OBJECT_BEGIN,
+
+  /**
+   * Encountered an object attribute key.
+   */
+  JSON_EVENT_OBJECT_KEY,
+
+  /**
+   * Encountered the end of an object (I.e '}')
+   */
+  JSON_EVENT_OBJECT_END,
+
+  /**
+   * Encountered the start of an array (I.e '[')
+   */
+  JSON_EVENT_ARRAY_BEGIN,
+
+  /**
+   * Encountered the end of an array (I.e ']')
+   */
+  JSON_EVENT_ARRAY_END,
+
+} json_parser_event_t;
 
 struct json_node {
 
@@ -105,6 +156,132 @@ struct json_pool {
    * @}
    */
 };
+
+struct json_parser {
+
+  /**
+   * Temporary buffer that contains currently parsed scalar values as a string.
+   */
+  json_string_t scratch;
+
+  /**
+   * Lookahead variable for peeking at the frontmost character.
+   */
+  int current_char;
+
+  /**
+   * Callback for getting the next character (EOF on end of input).
+   */
+  int (*get_next)(json_parser_t *parser);
+
+  /**
+   * Callback that handles parsing errors.
+   *
+   * @param parser The parser where the error occured.
+   * @param error_code The numeric code of the error.
+   * @param error_string A human-readable error message.
+   */
+  void (*on_error)(json_parser_t *parser, int error_code,
+                   string_view_t error_string);
+
+  /**
+   * Processes a parsing event.
+   *
+   * @param parser Parser where the event was raised.
+   * @param event The parser event.
+   * @param type The JSON type of the value being parsed.
+   *
+   * @return true on success
+   */
+  bool (*on_event)(json_parser_t *parser, json_parser_event_t event,
+                   json_type_t type);
+
+  /**
+   * Parser line information.
+   */
+  struct {
+
+    /**
+     * Line number.
+     */
+    int line;
+
+    /**
+     * Column number.
+     */
+    int column;
+
+    /**
+     * File offset in bytes.
+     */
+    int offset;
+
+  } lineno;
+
+  /**
+   * A reserved user-defined arguments that may be used by parser
+   * implementations.
+   */
+  void *user1;
+  void *user2;
+  void *user3;
+  void *user4;
+};
+
+/**
+ * Parse JSON using a custom parser.
+ *
+ * @param parser Parser to execute.
+ * @return true if the value could be parsed.
+ * @{
+ */
+bool json_parse(json_parser_t *parser);
+bool json_parse_keyword(json_parser_t *parser);
+bool json_parse_string(json_parser_t *parser);
+bool json_parse_number(json_parser_t *parser);
+bool json_parse_array(json_parser_t *parser);
+bool json_parse_object(json_parser_t *parser);
+/**
+ * @}
+ */
+
+/**
+ * Creates a parser that parses JSON values.
+ *
+ * @param[out] out_parser Pointer to a variable that receives the parser.
+ * @param pool Pool used to allocate the JSON values.
+ * @param get Callback for getting characters.
+ * @param f User defined argument to pass to the get callback.
+ *
+ * @return true if the parser could be created.
+ */
+bool json_create_value_parser(json_parser_t *out_parser, json_pool_t *pool,
+                              int (*get)(void *), void *f);
+
+/**
+ * Gets the result from a value parser.
+ */
+json_node_t json_value_parser_result(const json_parser_t *parser);
+
+/**
+ * Deallocates any memory used by a JSON value parser.
+ */
+void json_destroy_value_parser(json_parser_t *parser);
+
+/**
+ * Loads a JSON value from a file.
+ *
+ * @param pool JSON pool to allocate the value in.
+ * @param f Stream to read from.
+ *
+ * @return The parsed node, or a node with node_id = 0 on error.
+ * @{
+ */
+json_node_t json_load(json_pool_t *pool, FILE *f);
+json_node_t json_loads(json_pool_t *pool, string_view_t *f);
+/**
+ * @}
+ */
 
 /**
  * Frees all memory allocated in the pool.

@@ -7,7 +7,9 @@ SOURCE_FILES := src/string_view.c \
 								src/sv_read.c \
 								src/format.c \
 								src/allocator.c \
-								src/json.c
+								src/json.c \
+								src/json_parse.c \
+								src/json_value_parser.c
 
 SOURCE_OBJECT_FILES := $(patsubst src/%.c,out/%.o,$(SOURCE_FILES))
 
