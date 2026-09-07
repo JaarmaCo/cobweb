@@ -332,7 +332,7 @@ json_node_t json_new(json_pool_t *pool, json_type_t type, ...) {
   case JSON_NULL:
   case JSON_TRUE:
   case JSON_FALSE:
-    result = (json_node_t){.type = type, .node_id = 0, .pool = pool};
+    result = (json_node_t){.type = type, .node_id = 1, .pool = pool};
     break;
   case JSON_NUMBER:
     result = json_new_number(pool, va_arg(va, json_number_t));
@@ -398,6 +398,8 @@ bool json_iterate_properties(json_node_t node, size_t *state,
   if (out_value) {
     *out_value = entry->value;
   }
+
+  *state = i + 1;
   return true;
 }
 
@@ -642,7 +644,7 @@ char *json_dumps(json_node_t node, string_builder_t *sb) {
   case JSON_NUMBER: {
     json_number_t number;
     json_get(node, JSON_NUMBER, &number);
-    if (!sb_format(sb, "%ld", number)) {
+    if (!sb_format(sb, "%Lg", number)) {
       return NULL;
     }
     break;

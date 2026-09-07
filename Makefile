@@ -48,10 +48,11 @@ test: build-tests
 	./out/test/dynamic_array
 	./out/test/string_builder
 	./out/test/hashmap
+	./out/test/json
 
 build-templates: $(TEMPLATE_SOURCES) $(TEMPLATE_OBJECTS)
 
-build-tests: build-templates out/test/dynamic_array out/test/string_builder out/test/hashmap
+build-tests: build-templates out/test/dynamic_array out/test/string_builder out/test/hashmap out/test/json
 
 clean:
 	rm -rf out
@@ -79,13 +80,16 @@ out/%.o: src/%.c | out/
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 out/test/dynamic_array: test/dynamic_array.c out/dynamic_array_int.o out/allocator.o | out/test/
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ test/dynamic_array.c out/dynamic_array_int.o out/allocator.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ test/dynamic_array.c $(SOURCE_OBJECT_FILES) $(TEMPLATE_OBJECTS)
 
 out/test/string_builder: test/string_builder.c $(SOURCE_OBJECT_FILES) | out/test/
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ test/string_builder.c $(SOURCE_OBJECT_FILES) out/dynamic_array_char.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ test/string_builder.c $(SOURCE_OBJECT_FILES) $(TEMPLATE_OBJECTS)
 
 out/test/hashmap: test/hashmap.c $(TEMPLATE_OBJECTS) $(SOURCE_OBJECT_FILES) | out/test/
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ test/hashmap.c $(SOURCE_OBJECT_FILES) $(TEMPLATE_OBJECTS)
+
+out/test/json: test/json.c $(TEMPLATE_OBJECTS) $(SOURCE_OBJECT_FILES) | out/test/
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ test/json.c $(SOURCE_OBJECT_FILES) $(TEMPLATE_OBJECTS)
 
 out/dynamic_array_json_node_t.c out/dynamic_array_json_node_t.h: src/dynamic_array.h src/json.h | out/
 	./c-template -o out -i src/dynamic_array.h -J templates/json.json
