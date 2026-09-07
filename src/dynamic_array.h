@@ -1,8 +1,8 @@
 //! Template OPTION "remove-inline"
 //! Template OPTION "mangle-groups"
 
-//! Template H "dynamic_array_${T}.h"
-//! Template GUARD "DYNAMIC_ARRAY_$(toupper ${T})_H_"
+//! Template H "dynamic_array_$(file ${T}).h"
+//! Template GUARD "DYNAMIC_ARRAY_$(macro ${T})_H_"
 
 #include "allocator.h"
 
@@ -140,8 +140,8 @@ T remove(dynamic_array *array, size_t index);
  */
 void remove_range(dynamic_array *array, size_t index, size_t count);
 
-//! Template C "dynamic_array_${T}.c"
-//! Template INCLUDE "dynamic_array_${T}.h"
+//! Template C "dynamic_array_$(file ${T}).c"
+//! Template INCLUDE "dynamic_array_$(file ${T}).h"
 
 inline void destroy(dynamic_array *array) {
   if (NULL == array || NULL == array->items) {

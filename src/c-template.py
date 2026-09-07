@@ -353,6 +353,8 @@ def seek_paren(source, i, oparen, cparen):
 COMMANDS = {
     "toupper": lambda params, values: " ".join(params[1:]).upper(),
     "tolower": lambda params, values: " ".join(params[1:]).lower(),
+    "macro": lambda params, values: macro_name(" ".join(params[1:])).upper(),
+    "file": lambda params, values: macro_name(" ".join(params[1:])).lower(),
 }
 
 def run_cmd(cmd, values):
@@ -553,7 +555,7 @@ def indent_print(s: str, indent: str = "    "):
         print(indent + line)
 
 def macro_name(s: str) -> str:
-    return re.sub(r"[^A-Za-z0-9_]", "_", s).upper()
+    return re.sub(r"[^A-Za-z0-9_]", "_", s).replace(" ", "_").upper()
 
 def get_type_includes(results: SimpleNamespace, types: list[dict], s: str, existing_includes: list[str] | None = None) -> list[str]:
     env = namespace_to_dict(results)
@@ -759,10 +761,11 @@ def main():
 
         infer = infer.strip('_')
         infer, _ = path.splitext(infer)
+        infer = macro_name(infer)
 
         for tx in DEFAULT_TEMPLATE:
             t = tx[0]
-            if infer == t["typename"] or infer == t["short"]:
+            if infer == macro_name(t["typename"]) or infer == macro_name(t["short"]):
                 if len(args.types) == 0:
                     args.types = [ t ]
                 else:
