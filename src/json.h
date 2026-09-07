@@ -505,5 +505,45 @@ bool json_equals(json_node_t lhs, json_node_t rhs);
  */
 size_t json_hash(json_node_t x);
 
+/**
+ * Evaluate a JSON path in the given node.
+ *
+ * Paths always start with a dollar sign '$' to signify the root element that is
+ * to be fetched. Following this, the path can consist of either '.<property>'
+ * to extract a property from an object, or `[<index>]` to get a value from an
+ * array.
+ *
+ * The path formatter also supports format arguments where %<n> can be put in
+ * place of where an array index or property name should be. The type of the
+ * format argument is deduced from it's usage in the format string, where size_t
+ * is expected for indices and string_view_t for properties.
+ *
+ * The format specifiers require a number that specifies where in the parameter
+ * list the argument is present. This is done by placing a number after the
+ * %-sign.
+ *
+ * Example:
+ *
+ *    json_node_t customer
+ *      = json_path(node, "$.%1.customers[%2]", SV("registry"), (size_t)2);
+ *
+ * Any conflicts arising from incorrect usage (an argument being inferred as
+ * both a string and index), are asserted in debug builds and coerced nullish
+ * values at release builds.
+ *
+ * @param node Node the path is relative to.
+ * @param path A JSON path format string to evaluate.
+ * @param va Variadic arguments to format into the path string.
+ *
+ * @return The node the path points to, or a node with node_id = 0 if the path
+ *         was invalid.
+ * @{
+ */
+json_node_t json_path(json_node_t node, const char *path, ...);
+json_node_t json_vpath(json_node_t node, const char *path, va_list va);
+/**
+ * @}
+ */
+
 #define JSON_H_
 #endif
