@@ -15,8 +15,9 @@
 #define JSON_WARNING_UNICODE_ESCAPE_SEQUENCES_NOT_SUPPORTED 100
 #define JSON_ERROR_MEMORY_ALLOCATION_FAILED -99
 
-typedef struct hashmap_sv_json json_object_t;
-typedef struct dynamic_array_json json_array_t;
+typedef struct json_object json_object_t;
+typedef struct json_object_entry json_object_entry_t;
+typedef struct json_array json_array_t;
 typedef string_builder_t json_string_t;
 typedef long double json_number_t;
 typedef uint32_t json_id_t;
@@ -149,7 +150,7 @@ struct json_pool {
    */
   size_t object_count;
   size_t object_capacity;
-  void **object_items;
+  json_object_entry_t **object_items;
   size_t *object_counts;
   size_t *object_capacities;
   /**
@@ -227,6 +228,42 @@ struct json_parser {
   void *user3;
   void *user4;
 };
+
+struct json_array {
+  json_node_t *items;
+  size_t count;
+  size_t capacity;
+  allocator_t *allocator;
+};
+
+#define TYPE_0 json_array_t
+#define TYPE_1 json_node_t
+#define PREFIX json_array_
+#define C_HEADER
+#include "dynamic_array.h"
+
+struct json_object_entry {
+  string_view_t key;
+  json_node_t value;
+  size_t hash;
+};
+
+struct json_object {
+  json_object_entry_t *items;
+  size_t count;
+  size_t capacity;
+  allocator_t *allocator;
+};
+
+#define TYPE_0 json_object_t
+#define TYPE_1 json_object_entry_t
+#define TYPE_2 string_view_t
+#define TYPE_3 json_node_t
+#define FUNCTION_1 sv_hash
+#define FUNCTION_2 sv_equals
+#define C_HEADER
+#define PREFIX json_object_
+#include "hashmap.h"
 
 /**
  * Parse JSON using a custom parser.

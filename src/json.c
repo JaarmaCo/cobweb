@@ -1,9 +1,51 @@
 #include "json.h"
-#include "dynamic_array_intptr_t.h"
-#include "dynamic_array_json_node_t.h"
-#include "dynamic_array_long_double.h"
-#include "dynamic_array_size_t.h"
-#include "hashmap_sv_json.h"
+#include "hash.h"
+
+#define TYPE_0 json_array_t
+#define TYPE_1 json_node_t
+#define PREFIX json_array_
+#define C_SOURCE
+#include "dynamic_array.h"
+
+#define TYPE_1 char *
+#define PREFIX da_
+#define SUFFIX _str
+#define HEADER_ONLY
+#include "dynamic_array.h"
+
+#define TYPE_1 size_t
+#define PREFIX da_
+#define SUFFIX _uz
+#define HEADER_ONLY
+#include "dynamic_array.h"
+
+#define TYPE_1 long double
+#define PREFIX da_
+#define SUFFIX _ld
+#define HEADER_ONLY
+#include "dynamic_array.h"
+
+#define TYPE_1 json_node_t *
+#define PREFIX da_
+#define SUFFIX _jp
+#define HEADER_ONLY
+#include "dynamic_array.h"
+
+#define TYPE_1 json_object_entry_t *
+#define PREFIX da_
+#define SUFFIX _ep
+#define HEADER_ONLY
+#include "dynamic_array.h"
+
+#define TYPE_0 json_object_t
+#define TYPE_1 json_object_entry_t
+#define TYPE_2 string_view_t
+#define TYPE_3 json_node_t
+#define FUNCTION_1 sv_hash
+#define FUNCTION_2 sv_equals
+#define C_SOURCE
+#define PREFIX json_object_
+#include "hashmap.h"
 
 void json_destroy_pool(json_pool_t *pool) {
 
@@ -50,13 +92,12 @@ void json_destroy_pool(json_pool_t *pool) {
   //
   for (size_t i = 0; i < pool->object_count; ++i) {
     allocator_release(pool->allocator, pool->object_items[i],
-                      pool->object_capacities[i] *
-                          sizeof(hashmap_entry_sv_json),
-                      _Alignof(hashmap_entry_sv_json));
+                      pool->object_capacities[i] * sizeof(json_object_entry_t),
+                      _Alignof(json_object_entry_t));
   }
   allocator_release(pool->allocator, pool->object_items,
-                    pool->object_capacity * sizeof(hashmap_entry_sv_json *),
-                    _Alignof(hashmap_entry_sv_json *));
+                    pool->object_capacity * sizeof(json_object_entry_t *),
+                    _Alignof(json_object_entry_t *));
   allocator_release(pool->allocator, pool->object_counts,
                     pool->object_capacity * sizeof(size_t), _Alignof(size_t));
   allocator_release(pool->allocator, pool->object_capacities,
@@ -166,9 +207,9 @@ json_node_t json_new_number(json_pool_t *pool, json_number_t value) {
 
 json_node_t json_new_array(json_pool_t *pool) {
 
-  dynamic_array_iptr items = {
+  dynamic_array_jp items = {
       .allocator = pool->allocator,
-      .items = (intptr_t *)pool->array_items,
+      .items = pool->array_items,
       .count = pool->array_count,
       .capacity = pool->array_capacity,
   };
@@ -187,7 +228,7 @@ json_node_t json_new_array(json_pool_t *pool) {
       .capacity = pool->array_capacity,
   };
 
-  if (!da_append_iptr(&items, 0)) {
+  if (!da_append_jp(&items, 0)) {
     handle_error(pool);
   }
 
@@ -219,9 +260,9 @@ json_node_t json_new_array(json_pool_t *pool) {
 
 json_node_t json_new_object(json_pool_t *pool) {
 
-  dynamic_array_iptr items = {
+  dynamic_array_ep items = {
       .allocator = pool->allocator,
-      .items = (intptr_t *)pool->object_items,
+      .items = pool->object_items,
       .count = pool->object_count,
       .capacity = pool->object_capacity,
   };
@@ -240,7 +281,7 @@ json_node_t json_new_object(json_pool_t *pool) {
       .capacity = pool->object_capacity,
   };
 
-  if (!da_append_iptr(&items, 0)) {
+  if (!da_append_ep(&items, 0)) {
     handle_error(pool);
   }
 
@@ -256,7 +297,7 @@ json_node_t json_new_object(json_pool_t *pool) {
   // capacities should always be equal.
   assert(items.capacity == counts.capacity &&
          items.capacity == capacities.capacity);
-  pool->object_items = (void **)items.items;
+  pool->object_items = items.items;
   pool->object_counts = counts.items;
   pool->object_capacities = capacities.items;
 
@@ -272,9 +313,9 @@ json_node_t json_new_object(json_pool_t *pool) {
 
 json_node_t json_new_string(json_pool_t *pool, json_string_t sb) {
 
-  dynamic_array_iptr items = {
+  dynamic_array_str items = {
       .allocator = pool->allocator,
-      .items = (intptr_t *)pool->string_items,
+      .items = pool->string_items,
       .count = pool->string_count,
       .capacity = pool->string_capacity,
   };
@@ -293,7 +334,7 @@ json_node_t json_new_string(json_pool_t *pool, json_string_t sb) {
       .capacity = pool->string_capacity,
   };
 
-  if (!da_append_iptr(&items, (intptr_t)sb.items)) {
+  if (!da_append_str(&items, sb.items)) {
     handle_error(pool);
   }
 
@@ -374,10 +415,10 @@ bool json_iterate_properties(json_node_t node, size_t *state,
   }
 
   size_t capacity = node.pool->object_capacities[node.node_id - 1];
-  hashmap_entry_sv_json *items = node.pool->object_items[node.node_id - 1];
+  json_object_entry_t *items = node.pool->object_items[node.node_id - 1];
 
   size_t i;
-  hashmap_entry_sv_json *entry = NULL;
+  json_object_entry_t *entry = NULL;
   for (i = *state; i < capacity; ++i) {
     entry = &items[i];
     if (entry->hash) {
@@ -472,13 +513,13 @@ bool json_insert(json_node_t node, string_view_t key, json_node_t new_node) {
     return false;
   }
 
-  if (hm_find_sv_json(&object, key)) {
+  if (json_object_find(&object, key)) {
     return false;
   }
 
   persist_string(node.pool, &key);
 
-  if (hm_insert_sv_json(&object, key, new_node)) {
+  if (json_object_insert(&object, key, new_node)) {
     json_update_object_node(node, object);
     return true;
   }
@@ -492,7 +533,7 @@ bool json_replace(json_node_t node, string_view_t key, json_node_t new_node) {
     return false;
   }
 
-  hashmap_entry_sv_json *entry = hm_find_sv_json(&object, key);
+  json_object_entry_t *entry = json_object_find(&object, key);
   if (entry) {
     entry->value = new_node;
     return true;
@@ -507,7 +548,7 @@ void json_put(json_node_t node, string_view_t key, json_node_t new_node) {
     return;
   }
 
-  hashmap_entry_sv_json *entry = hm_find_sv_json(&object, key);
+  json_object_entry_t *entry = json_object_find(&object, key);
   if (entry) {
     entry->value = new_node;
     return;
@@ -515,7 +556,7 @@ void json_put(json_node_t node, string_view_t key, json_node_t new_node) {
 
   persist_string(node.pool, &key);
 
-  if (!hm_insert_sv_json(&object, key, new_node)) {
+  if (!json_object_insert(&object, key, new_node)) {
     handle_error(node.pool);
   }
   json_update_object_node(node, object);
@@ -528,7 +569,7 @@ json_node_t *json_find(json_node_t node, string_view_t key) {
     return NULL;
   }
 
-  hashmap_entry_sv_json *entry = hm_find_sv_json(&object, key);
+  json_object_entry_t *entry = json_object_find(&object, key);
   return entry ? &entry->value : NULL;
 }
 
@@ -550,10 +591,10 @@ void json_remove(json_node_t node, json_node_t *entry) {
       return;
     }
 
-    hashmap_entry_sv_json *real_entry =
-        (hashmap_entry_sv_json *)((intptr_t)entry -
-                                  offsetof(hashmap_entry_sv_json, value));
-    hm_remove_sv_json(&object, real_entry);
+    json_object_entry_t *real_entry =
+        (json_object_entry_t *)((intptr_t)entry -
+                                offsetof(json_object_entry_t, value));
+    json_object_remove(&object, real_entry);
     json_update_object_node(node, object);
   } else if (node.type == JSON_ARRAY) {
 
@@ -566,7 +607,7 @@ void json_remove(json_node_t node, json_node_t *entry) {
     if (offset < 0 || offset > (ptrdiff_t)array.count) {
       return;
     }
-    da_remove_json(&array, (size_t)offset);
+    json_array_remove(&array, (size_t)offset);
     json_update_array_node(node, array);
   }
 }
@@ -578,7 +619,7 @@ bool json_delete(json_node_t node, string_view_t key) {
     return false;
   }
 
-  if (hm_delete_sv_json(&object, key)) {
+  if (json_object_delete(&object, key)) {
     json_update_object_node(node, object);
     return true;
   }
@@ -592,7 +633,7 @@ void json_append(json_node_t node, json_node_t new_node) {
     return;
   }
 
-  if (!da_append_json(&array, new_node)) {
+  if (!json_array_append(&array, new_node)) {
     handle_error(node.pool);
   }
   json_update_array_node(node, array);
@@ -606,7 +647,7 @@ void json_append_range(json_node_t node, size_t count,
     return;
   }
 
-  if (!da_append_range_json(&array, count, items)) {
+  if (!json_array_append_range(&array, count, items)) {
     handle_error(node.pool);
   }
   json_update_array_node(node, array);
@@ -619,7 +660,7 @@ void json_remove_back(json_node_t node) {
     return;
   }
 
-  da_remove_back_json(&array);
+  json_array_remove_back(&array);
   json_update_array_node(node, array);
 }
 
@@ -630,7 +671,7 @@ void json_remove_back_range(json_node_t node, size_t count) {
     return;
   }
 
-  da_remove_back_range_json(&array, count);
+  json_array_remove_back_range(&array, count);
   json_update_array_node(node, array);
 }
 

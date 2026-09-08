@@ -1,4 +1,12 @@
-#include "hashmap_sv_i.h"
+#include "string_view.h"
+
+#define TYPE_2 string_view_t
+#define TYPE_3 int
+#define PREFIX hm_
+#define FUNCTION_1 sv_hash
+#define FUNCTION_2 sv_equals
+#define HEADER_ONLY
+#include "hashmap.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,68 +22,68 @@
 #define OK(str) BOLD GREEN "[OK]: " RST str "\n"
 #define INFO(str) BOLD BLUE str RST "\n"
 
-static void check_insert(hashmap_sv_i *hm) {
+static void check_insert(hashmap *hm) {
   printf(INFO("--- Test check_insert"));
 
-  hm_insert_sv_i(hm, SV("aaa"), 1);
-  hm_insert_sv_i(hm, SV("bbb"), 2);
-  hm_insert_sv_i(hm, SV("ccc"), 3);
-  hm_insert_sv_i(hm, SV("ddd"), 4);
-  hm_insert_sv_i(hm, SV("eee"), 5);
-  hm_insert_sv_i(hm, SV("fff"), 6);
+  hm_insert(hm, SV("aaa"), 1);
+  hm_insert(hm, SV("bbb"), 2);
+  hm_insert(hm, SV("ccc"), 3);
+  hm_insert(hm, SV("ddd"), 4);
+  hm_insert(hm, SV("eee"), 5);
+  hm_insert(hm, SV("fff"), 6);
 }
 
-static void check_replace(hashmap_sv_i *hm) {
+static void check_replace(hashmap *hm) {
   printf(INFO("--- Test check_replace"));
 
-  hm_insert_sv_i(hm, SV("aaa"), 1);
-  hm_insert_sv_i(hm, SV("bbb"), 2);
-  hm_insert_sv_i(hm, SV("ccc"), 3);
-  hm_insert_sv_i(hm, SV("ddd"), 4);
-  hm_insert_sv_i(hm, SV("eee"), 5);
-  hm_insert_sv_i(hm, SV("fff"), 6);
+  hm_insert(hm, SV("aaa"), 1);
+  hm_insert(hm, SV("bbb"), 2);
+  hm_insert(hm, SV("ccc"), 3);
+  hm_insert(hm, SV("ddd"), 4);
+  hm_insert(hm, SV("eee"), 5);
+  hm_insert(hm, SV("fff"), 6);
 
-  hm_replace_sv_i(hm, SV("ddd"), 999);
-  hm_replace_sv_i(hm, SV("ccc"), 111);
+  hm_replace(hm, SV("ddd"), 999);
+  hm_replace(hm, SV("ccc"), 111);
 }
 
-static void check_put(hashmap_sv_i *hm) {
+static void check_put(hashmap *hm) {
   printf(INFO("--- Test check_put"));
 
-  hm_put_sv_i(hm, SV("aaa"), 1);
-  hm_put_sv_i(hm, SV("bbb"), 2);
-  hm_put_sv_i(hm, SV("ccc"), 3);
-  hm_put_sv_i(hm, SV("ddd"), 4);
-  hm_put_sv_i(hm, SV("ddd"), 999);
-  hm_put_sv_i(hm, SV("eee"), 5);
-  hm_put_sv_i(hm, SV("fff"), 6);
+  hm_put(hm, SV("aaa"), 1);
+  hm_put(hm, SV("bbb"), 2);
+  hm_put(hm, SV("ccc"), 3);
+  hm_put(hm, SV("ddd"), 4);
+  hm_put(hm, SV("ddd"), 999);
+  hm_put(hm, SV("eee"), 5);
+  hm_put(hm, SV("fff"), 6);
 
-  hm_put_sv_i(hm, SV("ccc"), 111);
+  hm_put(hm, SV("ccc"), 111);
 }
 
-static void check_delete(hashmap_sv_i *hm) {
+static void check_delete(hashmap *hm) {
   printf(INFO("--- Test check_delete"));
 
-  hm_insert_sv_i(hm, SV("aaa"), 1);
-  hm_insert_sv_i(hm, SV("bbb"), 2);
-  hm_insert_sv_i(hm, SV("ccc"), 3);
-  hm_insert_sv_i(hm, SV("ddd"), 4);
-  hm_insert_sv_i(hm, SV("eee"), 5);
-  hm_insert_sv_i(hm, SV("fff"), 6);
+  hm_insert(hm, SV("aaa"), 1);
+  hm_insert(hm, SV("bbb"), 2);
+  hm_insert(hm, SV("ccc"), 3);
+  hm_insert(hm, SV("ddd"), 4);
+  hm_insert(hm, SV("eee"), 5);
+  hm_insert(hm, SV("fff"), 6);
 
-  hm_delete_sv_i(hm, SV("bbb"));
-  hm_delete_sv_i(hm, SV("fff"));
+  hm_delete(hm, SV("bbb"));
+  hm_delete(hm, SV("fff"));
 }
 
-static void run_test(void (*test)(hashmap_sv_i *), size_t expected_count,
-                     hashmap_entry_sv_i *expected_entries) {
+static void run_test(void (*test)(hashmap *), size_t expected_count,
+                     hashmap_entry *expected_entries) {
 
   size_t allocation_size = 0;
   allocator_t mallocator = malloc_allocator();
   debug_allocator_t dba =
       trace_free_balance_allocator(&mallocator, &allocation_size);
 
-  hashmap_sv_i hm = {
+  hashmap hm = {
       .allocator = &dba.base,
   };
 
@@ -134,7 +142,7 @@ static void run_test(void (*test)(hashmap_sv_i *), size_t expected_count,
       exit(1);
     }
 
-    hashmap_entry_sv_i *entry = hm_find_sv_i(&hm, key);
+    hashmap_entry *entry = hm_find(&hm, key);
     if (NULL == entry) {
       fprintf(stderr,
               ERR("Could linearly search for key \"%.*s\", but it was not "
@@ -152,7 +160,7 @@ static void run_test(void (*test)(hashmap_sv_i *), size_t expected_count,
 
   printf(OK("All entries are in the map"));
 
-  hm_destroy_sv_i(&hm);
+  hm_destroy(&hm);
 
   if (allocation_size > 0) {
     fprintf(stderr, ERR("Leaked %zu bytes"), allocation_size);
@@ -161,28 +169,28 @@ static void run_test(void (*test)(hashmap_sv_i *), size_t expected_count,
 }
 
 int main(void) {
-  hashmap_entry_sv_i inserts[6] = {
+  hashmap_entry inserts[6] = {
       {.key = SV("aaa"), .value = 1}, {.key = SV("bbb"), .value = 2},
       {.key = SV("ccc"), .value = 3}, {.key = SV("ddd"), .value = 4},
       {.key = SV("eee"), .value = 5}, {.key = SV("fff"), .value = 6},
   };
   run_test(check_insert, 6, inserts);
 
-  hashmap_entry_sv_i replacements[6] = {
+  hashmap_entry replacements[6] = {
       {.key = SV("aaa"), .value = 1},   {.key = SV("bbb"), .value = 2},
       {.key = SV("ccc"), .value = 111}, {.key = SV("ddd"), .value = 999},
       {.key = SV("eee"), .value = 5},   {.key = SV("fff"), .value = 6},
   };
   run_test(check_replace, 6, replacements);
 
-  hashmap_entry_sv_i put_items[6] = {
+  hashmap_entry put_items[6] = {
       {.key = SV("aaa"), .value = 1},   {.key = SV("bbb"), .value = 2},
       {.key = SV("ccc"), .value = 111}, {.key = SV("ddd"), .value = 999},
       {.key = SV("eee"), .value = 5},   {.key = SV("fff"), .value = 6},
   };
   run_test(check_put, 6, put_items);
 
-  hashmap_entry_sv_i delete_items[4] = {
+  hashmap_entry delete_items[4] = {
       {.key = SV("aaa"), .value = 1},
       {.key = SV("ccc"), .value = 3},
       {.key = SV("ddd"), .value = 4},

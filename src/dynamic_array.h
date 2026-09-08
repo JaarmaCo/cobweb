@@ -1,8 +1,14 @@
-//! Template OPTION "remove-inline"
-//! Template OPTION "mangle-groups"
 
-//! Template H "dynamic_array_$(file ${T}).h"
-//! Template GUARD "DYNAMIC_ARRAY_$(macro ${T})_H_"
+#if !defined(C_SOURCE) && !defined(C_HEADER) && !defined(HEADER_ONLY)
+#define TYPE_1 int
+#define SUFFIX _i
+#define HEADER_ONLY
+#endif
+
+#define REQUIRE_TYPE_1
+#include "template-def.h"
+
+#if defined(C_HEADER)
 
 #include "allocator.h"
 
@@ -11,21 +17,25 @@
 #include <stdlib.h>
 #include <string.h>
 
-//! Template TYPE 1
-typedef int T;
+#if !defined(TYPE_0)
+#define TYPE_0 M_CAT(dynamic_array, SUFFIX)
+#endif
 
-//! Template MANGLE "${1}_${T.short}"
-#define dynamic_array dynamic_array
-#define reserve da_reserve
-#define append da_append
-#define append_range da_append_range
-#define insert da_insert
-#define insert_range da_insert_range
-#define remove_back_range da_remove_back_range
-#define remove_back da_remove_back
-#define remove da_remove
-#define remove_range da_remove_range
-#define destroy da_destroy
+#define T TYPE_1
+
+#define dynamic_array TYPE_0
+#define reserve M_NAME(reserve)
+#define append M_NAME(append)
+#define append_range M_NAME(append_range)
+#define insert M_NAME(insert)
+#define insert_range M_NAME(insert_range)
+#define remove_back_range M_NAME(remove_back_range)
+#define remove_back M_NAME(remove_back)
+#define remove M_NAME(remove)
+#define remove_range M_NAME(remove_range)
+#define destroy M_NAME(destroy)
+
+#if defined(DEFINE_STRUCT)
 
 /**
  * Templated dynamic array implementation that uses a custom allocator for
@@ -39,6 +49,7 @@ typedef int T;
  * allocator destruction.
  */
 typedef struct dynamic_array {
+
   /**
    * Pointer to the dynamically allocated array.
    */
@@ -64,9 +75,12 @@ typedef struct dynamic_array {
 
 } dynamic_array;
 
+#endif
+
 /**
  * Destroy the provided dynamic array.
  */
+INLINE
 void destroy(dynamic_array *array);
 
 /**
@@ -74,6 +88,7 @@ void destroy(dynamic_array *array);
  *
  * @return The new capacity of the array, or 0 if the memory allocation failed.
  */
+INLINE
 size_t reserve(dynamic_array *array, size_t size);
 
 /**
@@ -82,6 +97,7 @@ size_t reserve(dynamic_array *array, size_t size);
  * @return A pointer to the added element, or NULL if a memory allocation
  *         failed.
  */
+INLINE
 T *append(dynamic_array *array, T item);
 
 /**
@@ -90,7 +106,8 @@ T *append(dynamic_array *array, T item);
  * @return A pointer to the first added element, or NULL if a memory allocation
  *         failed.
  */
-T *append_range(dynamic_array *array, size_t count, const T *items);
+INLINE
+T *append_range(dynamic_array *array, size_t count, T const *items);
 
 /**
  * Insert an element at a specific index by extending the array and
@@ -99,6 +116,7 @@ T *append_range(dynamic_array *array, size_t count, const T *items);
  * @return A pointer to the inserted element, or NULL if the memory allocation
  *         failed.
  */
+INLINE
 T *insert(dynamic_array *array, size_t index, T item);
 
 /**
@@ -108,19 +126,22 @@ T *insert(dynamic_array *array, size_t index, T item);
  * @return A pointer to the first inserted element, or NULL if the memory
  *         allocation failed.
  */
+INLINE
 T *insert_range(dynamic_array *array, size_t index, size_t count,
-                const T *items);
+                T const *items);
 
 /**
  * Remove the last element from the array.
  *
  * @return The removed element.
  */
+INLINE
 T remove_back(dynamic_array *array);
 
 /**
  * Remove the last count elements from the array.
  */
+INLINE
 void remove_back_range(dynamic_array *array, size_t count);
 
 /**
@@ -129,6 +150,7 @@ void remove_back_range(dynamic_array *array, size_t count);
  * @param index Index of the element to remove.
  * @return The removed element.
  */
+INLINE
 T remove(dynamic_array *array, size_t index);
 
 /**
@@ -138,12 +160,15 @@ T remove(dynamic_array *array, size_t index);
  * @param index Index of the first element to remove.
  * @param count Number of elements to remove.
  */
+INLINE
 void remove_range(dynamic_array *array, size_t index, size_t count);
 
-//! Template C "dynamic_array_$(file ${T}).c"
-//! Template INCLUDE "dynamic_array_$(file ${T}).h"
+#endif // defined(C_HEADER)
 
-inline void destroy(dynamic_array *array) {
+#if defined(C_SOURCE)
+
+INLINE
+void destroy(dynamic_array *array) {
   if (NULL == array || NULL == array->items) {
     return;
   }
@@ -152,7 +177,8 @@ inline void destroy(dynamic_array *array) {
   memset(array, 0, sizeof *array);
 }
 
-inline size_t reserve(dynamic_array *array, size_t size) {
+INLINE
+size_t reserve(dynamic_array *array, size_t size) {
   assert(NULL != array);
   assert(array->count <= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
@@ -173,7 +199,8 @@ inline size_t reserve(dynamic_array *array, size_t size) {
   return size;
 }
 
-inline T *append(dynamic_array *array, T item) {
+INLINE
+T *append(dynamic_array *array, T item) {
   assert(NULL != array);
   assert(array->count <= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
@@ -186,7 +213,8 @@ inline T *append(dynamic_array *array, T item) {
   return end;
 }
 
-inline T *append_range(dynamic_array *array, size_t count, const T *items) {
+INLINE
+T *append_range(dynamic_array *array, size_t count, T const *items) {
   assert(NULL != array);
   assert(array->count <= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
@@ -207,13 +235,15 @@ inline T *append_range(dynamic_array *array, size_t count, const T *items) {
   return first;
 }
 
-inline T remove_back(dynamic_array *array) {
+INLINE
+T remove_back(dynamic_array *array) {
   T back = array->items[array->count - 1];
   remove_back_range(array, 1);
   return back;
 }
 
-inline void remove_back_range(dynamic_array *array, size_t count) {
+INLINE
+void remove_back_range(dynamic_array *array, size_t count) {
   assert(NULL != array);
   assert(array->count <= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
@@ -222,7 +252,8 @@ inline void remove_back_range(dynamic_array *array, size_t count) {
   array->count -= count;
 }
 
-inline T remove(dynamic_array *array, size_t index) {
+INLINE
+T remove(dynamic_array *array, size_t index) {
   assert(index < array->count);
 
   T item = array->items[index];
@@ -230,7 +261,8 @@ inline T remove(dynamic_array *array, size_t index) {
   return item;
 }
 
-inline void remove_range(dynamic_array *array, size_t index, size_t count) {
+INLINE
+void remove_range(dynamic_array *array, size_t index, size_t count) {
   assert(NULL != array);
   assert(array->count <= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
@@ -242,8 +274,9 @@ inline void remove_range(dynamic_array *array, size_t index, size_t count) {
   remove_back_range(array, count);
 }
 
-inline T *insert_range(dynamic_array *array, size_t index, size_t count,
-                       const T *items) {
+INLINE
+T *insert_range(dynamic_array *array, size_t index, size_t count,
+                T const *items) {
   assert(NULL != array);
   assert(array->count <= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
@@ -260,6 +293,23 @@ inline T *insert_range(dynamic_array *array, size_t index, size_t count,
   return array->items + index;
 }
 
-inline T *insert(dynamic_array *array, size_t index, T item) {
+INLINE
+T *insert(dynamic_array *array, size_t index, T item) {
   return insert_range(array, index, 1, &item);
 }
+
+#endif // defined (C_SOURCE)
+
+#undef T
+#undef dynamic_array
+#undef reserve
+#undef append
+#undef append_range
+#undef insert
+#undef insert_range
+#undef remove_back_range
+#undef remove_back
+#undef remove
+#undef remove_range
+#undef destroy
+#include "template-undef.h"
