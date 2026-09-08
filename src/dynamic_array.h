@@ -1,3 +1,22 @@
+// clang-format off
+//
+// dynamic_array.h
+//
+// This is a templated dynamic array implementation that is parameterized using
+// user defined macros.
+//
+// The parameters for this file are:
+//
+// - #define TYPE_0 // Structure type of the array (optional)
+// - #define TYPE_1 // Type of the items in the array (required)
+// - #define FUNCTION_0(TYPE_1 *) // Item type destructor function (optional)
+// - #define PREFIX // Prefix to prepend to all generated functions
+// - #define SUFFIX // Suffix to append to all generated symbols
+// - #define C_HEADER // If defined, treats this file as an (unguarded) C header file
+// - #define C_SOURCE // If defined, treats this file as a C source file
+// - #define HEADER_ONLY // If defined, inlines all functions and includes both the source and header
+//
+// clang-format on
 
 #if !defined(C_SOURCE) && !defined(C_HEADER) && !defined(HEADER_ONLY)
 #define TYPE_1 int

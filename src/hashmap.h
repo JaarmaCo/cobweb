@@ -1,3 +1,27 @@
+// clang-format off
+//
+// hashmap.h
+//
+// This is a "templated" C header file containing a flat hashmap implementation
+// that permits parameterization using user defined macros.
+//
+// The parameters for this file are:
+//
+// - #define TYPE_0 // The hashmap structure type (optional)
+// - #define TYPE_1 // The hashmap entry type (optional)
+// - #define TYPE_2 // The key type (required)
+// - #define TYPE_3 // The value type (required)
+// - #define FUNCTION_0(TYPE_1 *) // Hashmap entry destructor (optional)
+// - #define FUNCTION_1(TYPE_2) // Key type hash function (required)
+// - #define FUNCTION_2(TYPE_3) // Key type equals function (required)
+// - #define PREFIX // Prefix to prepend to all generated function (optional)
+// - #define SUFFIX // Suffix to append to all generated symbols (optional)
+// - #define C_HEADER // If defined, produces an (unguarded) C-header file
+// - #define C_SOURCE // If defined, produces a C source file
+// - #define HEADER_ONLY // If defined, inlines all functions and includes both source and header
+//
+// clang-format on
+
 #if !defined(C_SOURCE) && !defined(C_HEADER) && !defined(HEADER_ONLY)
 #define TYPE_2 int
 #define TYPE_3 int
@@ -151,6 +175,15 @@ void destroy(hashmap *hm) {
   if (!hm || !hm->items) {
     return;
   }
+
+#if defined(FUNCTION_0)
+  for (size_t i = 0; i < hm->capacity; ++i) {
+    if (hm->items[i].hash != 0) {
+      FUNCTION_0(&hm->items[i]);
+    }
+  }
+#endif
+
   allocator_release(hm->allocator, hm->items,
                     hm->capacity * sizeof(hashmap_entry),
                     _Alignof(hashmap_entry));
@@ -297,6 +330,9 @@ INLINE
 void remove(hashmap *hm, hashmap_entry *entry) {
   assert(entry - hm->items > 0 && (size_t)(entry - hm->items) < hm->capacity);
   entry->hash = 0;
+#ifdef FUNCTION_0
+  FUNCTION_0(entry);
+#endif
   --hm->count;
 }
 
