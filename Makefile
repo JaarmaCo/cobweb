@@ -7,6 +7,9 @@ SOURCE_FILES := src/string_view.c \
 								src/sv_read.c \
 								src/format.c \
 								src/allocator.c \
+								src/arena_allocator.c \
+								src/scratch_allocator.c \
+								src/auto_free.c \
 								src/json.c \
 								src/json_parse.c \
 								src/json_value_parser.c

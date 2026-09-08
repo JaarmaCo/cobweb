@@ -129,8 +129,8 @@ static void run_test(json_node_t (*test)(json_pool_t *pool),
                      string_view_t expected) {
 
   size_t allocated_size = 0;
-  allocator_t ma = malloc_allocator();
-  debug_allocator_t a = trace_free_balance_allocator(&ma, &allocated_size);
+  debug_allocator_t a =
+      trace_free_balance_allocator(malloc_allocator, &allocated_size);
 
   json_pool_t pool = {
       .allocator = &a.base,

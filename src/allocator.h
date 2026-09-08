@@ -82,11 +82,13 @@ typedef void *(*allocator_function_t)(struct allocator *allocator,
 typedef void (*allocation_debug_function_t)(const allocation_t *allocation,
                                             void *user);
 
+typedef struct allocator allocator_t;
+
 /**
  * Polymorphic allocator structure. Other allocators can be created by adding
  * a field of this structure as it's first member.
  */
-typedef struct allocator {
+struct allocator {
   /**
    * Callback used to manage the allocations.
    */
@@ -96,14 +98,15 @@ typedef struct allocator {
    * Optional data parameter that can be utilized by allocator implementations.
    */
   uintptr_t data;
+};
 
-} allocator_t;
+typedef struct debug_allocator debug_allocator_t;
 
 /**
  * Allocator implementation that performs allocations using an upstream
  * allocator and reports each performed allocation to a callback.
  */
-typedef struct debug_allocator {
+struct debug_allocator {
 
   /**
    * Allocator structure to be used in the allocation calls.
@@ -119,13 +122,70 @@ typedef struct debug_allocator {
    * Callback used to report each memory allocation.
    */
   allocation_debug_function_t callback;
-
-} debug_allocator_t;
+};
 
 /**
- * Creates an allocator implementation that uses malloc/realloc/free.
+ * An allocator implementation that uses malloc/realloc/free.
  */
-allocator_t malloc_allocator(void);
+extern allocator_t *malloc_allocator;
+
+/**
+ * Creates a new arena allocator.
+ *
+ * This function may call exit(int) if the buffer parameter was NULL, and
+ * the call to allocate the arena buffer failed.
+ *
+ * @param buffer_size Size of the arena buffer, has to be at least 128 bytes.
+ * @param buffer Pointer to an existing buffer, or NULL to allocate
+ *               the arena using malloc(size_t)
+ *
+ * @return A pointer to the arena allocator, which has been
+ *         constructed at the start of the arena buffer.
+ */
+allocator_t *arena_allocator(size_t buffer_size, void *buffer);
+
+/**
+ * Gets a per-thread allocated arena allocator that is reused at every
+ * subsequent call to this function.
+ *
+ * That is, after calling this function, the returned allocator is only valid
+ * until the next call to scratch_allocator. To explicity free the existing
+ * scratch buffer in this thread, call scratch_allocator with min_size = 0.
+ *
+ * This function will call exit(int) if the scratch buffer allocation failed.
+ *
+ * @param min_size Size hint to use when deciding the buffer size.
+ *
+ * @return A pointer to the new arena allocator.
+ */
+allocator_t *scratch_allocator(size_t min_size);
+
+/**
+ * Creates an allocator that permits freeing all allocated blocks in one call.
+ *
+ * @param upstream Allocator used to allocate the actual memory.
+ *
+ * @return The new allocator, or NULL if allocating the allocator header failed.
+ */
+allocator_t *auto_free_allocator(allocator_t *upstream);
+
+/**
+ * Frees all allocated blocks that where allocated using the given auto free
+ * allocator.
+ *
+ * @param allocator Pointer to an allocator that was created
+ *                  using auto_free_allocator(allocator_t *).
+ */
+void auto_free(allocator_t *allocator);
+
+/**
+ * Frees everyting owned by an auto free allocator, including the allocator
+ * itself.
+ *
+ * @param allocator Pointer to an allocator that was created
+ *                  using auto_free_allocator(allocator_t *)
+ */
+void auto_free_destroy(allocator_t *allocator);
 
 /**
  * Creates an allocator that reports allocations back to a callback.

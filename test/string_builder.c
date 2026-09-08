@@ -77,8 +77,8 @@ static void check_append_string_literal(string_builder_t *sb) {
 
 static void run_test(void (*runner)(string_builder_t *), const char *expected) {
   size_t allocated = 0;
-  allocator_t a = malloc_allocator();
-  debug_allocator_t dba = trace_free_balance_allocator(&a, &allocated);
+  debug_allocator_t dba =
+      trace_free_balance_allocator(malloc_allocator, &allocated);
 
   string_builder_t sb = {
       .allocator = &dba.base,

@@ -79,9 +79,8 @@ static void run_test(void (*test)(hashmap *), size_t expected_count,
                      hashmap_entry *expected_entries) {
 
   size_t allocation_size = 0;
-  allocator_t mallocator = malloc_allocator();
   debug_allocator_t dba =
-      trace_free_balance_allocator(&mallocator, &allocation_size);
+      trace_free_balance_allocator(malloc_allocator, &allocation_size);
 
   hashmap hm = {
       .allocator = &dba.base,

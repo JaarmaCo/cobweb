@@ -16,12 +16,11 @@
 #define OK(str) BOLD GREEN "[OK]: " RST str "\n"
 #define INFO(str) BOLD BLUE str RST "\n"
 
-static allocator_t ma = {0};
-
 static void run_test(void (*runner)(dynamic_array *da),
                      const int *expected_data, size_t expected_size) {
   size_t allocation_size = 0;
-  debug_allocator_t a = trace_free_balance_allocator(&ma, &allocation_size);
+  debug_allocator_t a =
+      trace_free_balance_allocator(malloc_allocator, &allocation_size);
 
   dynamic_array da = {
       .allocator = &a.base,
@@ -173,7 +172,6 @@ static void check_remove(dynamic_array *da) {
 }
 
 int main(void) {
-  ma = malloc_allocator();
   run_test(check_append, (const int[]){1, 2, 3, 4, 5, 6, 7}, 7);
   run_test(check_append_range, (const int[]){0, 1, 2, 3, 4, 5, 6, 7, 8}, 8);
   run_test(checknsert, (const int[]){0, 1, 2, 3, 4, 5, 6, 7}, 8);

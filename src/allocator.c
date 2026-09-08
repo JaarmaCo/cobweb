@@ -17,11 +17,9 @@ static void *malloc_allocate(allocator_t *allocator,
   }
 }
 
-allocator_t malloc_allocator(void) {
-  return (allocator_t){
-      .allocate = malloc_allocate,
-  };
-}
+allocator_t *malloc_allocator = &(allocator_t){
+    .allocate = malloc_allocate,
+};
 
 static void *debug_allocate(allocator_t *allocator,
                             const allocation_t *allocation) {
