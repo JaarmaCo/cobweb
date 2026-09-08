@@ -31,7 +31,9 @@
 #define insert_range M_NAME(insert_range)
 #define remove_back_range M_NAME(remove_back_range)
 #define remove_back M_NAME(remove_back)
+#define pop_back M_NAME(pop_back)
 #define remove M_NAME(remove)
+#define pop M_NAME(pop)
 #define remove_range M_NAME(remove_range)
 #define destroy M_NAME(destroy)
 
@@ -134,9 +136,16 @@ T *insert_range(dynamic_array *array, size_t index, size_t count,
  * Remove the last element from the array.
  *
  * @return The removed element.
+ * @{
  */
 INLINE
-T remove_back(dynamic_array *array);
+T pop_back(dynamic_array *array);
+
+INLINE
+void remove_back(dynamic_array *array);
+/**
+ * @}
+ */
 
 /**
  * Remove the last count elements from the array.
@@ -149,9 +158,16 @@ void remove_back_range(dynamic_array *array, size_t count);
  *
  * @param index Index of the element to remove.
  * @return The removed element.
+ * @{
  */
 INLINE
-T remove(dynamic_array *array, size_t index);
+T pop(dynamic_array *array, size_t index);
+
+INLINE
+void remove(dynamic_array *array, size_t index);
+/**
+ * @}
+ */
 
 /**
  * Erase a range of elements in an array by first shifting elements
@@ -172,6 +188,13 @@ void destroy(dynamic_array *array) {
   if (NULL == array || NULL == array->items) {
     return;
   }
+
+#if defined(FUNCTION_0)
+  for (size_t i = 0; i < array->count; ++i) {
+    FUNCTION_0(&array->items[i]);
+  }
+#endif
+
   allocator_release(array->allocator, array->items, array->capacity * sizeof(T),
                     _Alignof(T));
   memset(array, 0, sizeof *array);
@@ -236,11 +259,13 @@ T *append_range(dynamic_array *array, size_t count, T const *items) {
 }
 
 INLINE
-T remove_back(dynamic_array *array) {
-  T back = array->items[array->count - 1];
-  remove_back_range(array, 1);
-  return back;
+T pop_back(dynamic_array *array) {
+  assert(array->count > 0);
+  return array->items[--array->count];
 }
+
+INLINE
+void remove_back(dynamic_array *array) { remove_back_range(array, 1); }
 
 INLINE
 void remove_back_range(dynamic_array *array, size_t count) {
@@ -249,16 +274,28 @@ void remove_back_range(dynamic_array *array, size_t count) {
   assert(array->capacity == 0 || NULL != array->items);
   assert(array->count >= count);
 
+#if defined(FUNCTION_0)
+  for (size_t i = array->count - count; i < array->count; ++i) {
+    FUNCTION_0(&array->items[i]);
+  }
+#endif
+
   array->count -= count;
 }
 
 INLINE
-T remove(dynamic_array *array, size_t index) {
+T pop(dynamic_array *array, size_t index) {
   assert(index < array->count);
 
   T item = array->items[index];
-  remove_range(array, index, 1);
+  memmove(&array->items[index], &array->items[index + 1],
+          (array->count - index - 1) * sizeof(T));
   return item;
+}
+
+INLINE
+void remove(dynamic_array *array, size_t index) {
+  remove_range(array, index, 1);
 }
 
 INLINE
@@ -268,6 +305,12 @@ void remove_range(dynamic_array *array, size_t index, size_t count) {
   assert(array->capacity == 0 || NULL != array->items);
   assert(index < array->count);
   assert(index + count <= array->count);
+
+#if defined(FUNCTION_0)
+  for (size_t i = index; i < count; ++i) {
+    FUNCTION_0(&array->items[i]);
+  }
+#endif
 
   memmove(array->items + index, array->items + index + count,
           (array->count - index - count) * sizeof(T));
@@ -309,6 +352,8 @@ T *insert(dynamic_array *array, size_t index, T item) {
 #undef insert_range
 #undef remove_back_range
 #undef remove_back
+#undef pop
+#undef pop_back
 #undef remove
 #undef remove_range
 #undef destroy
