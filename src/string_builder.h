@@ -2,8 +2,13 @@
 
 #include <stdio.h>
 
-#include "dynamic_array_char.h"
 #include "string_view.h"
+
+#define C_HEADER
+#define TYPE_1 char
+#define SUFFIX _c
+#define PREFIX da_
+#include "dynamic_array.h"
 
 #define STRING_LITERAL_REQUEST_START_QUOTE -1
 #define STRING_LITERAL_REQUEST_END_QUOTE -2
