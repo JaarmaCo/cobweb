@@ -12,7 +12,8 @@ SOURCE_FILES := src/string_view.c \
 								src/auto_free.c \
 								src/json.c \
 								src/json_parse.c \
-								src/json_value_parser.c
+								src/json_value_parser.c \
+								src/process.c
 
 SOURCE_OBJECT_FILES := $(patsubst src/%.c,out/%.o,$(SOURCE_FILES))
 
