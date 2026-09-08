@@ -19,7 +19,7 @@
 #if !defined(TYPE_0)
 #if defined(REQUIRE_TYPE_0)
 #error "Required template argument TYPE_0 not defined"
-#else
+#elif !defined(C_SOURCE)
 #define DEFINE_STRUCT
 #endif
 #endif

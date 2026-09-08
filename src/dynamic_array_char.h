@@ -4,7 +4,7 @@
 #define TYPE_1 char
 #define SUFFIX _c
 #define PREFIX da_
-#define HEADER_ONLY
+#define C_HEADER
 #include "dynamic_array.h"
 
 #endif

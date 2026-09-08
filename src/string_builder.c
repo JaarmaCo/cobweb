@@ -1,5 +1,11 @@
 #include "string_builder.h"
 
+#define TYPE_1 char
+#define SUFFIX _c
+#define PREFIX da_
+#define C_SOURCE
+#include "dynamic_array.h"
+
 #include <ctype.h>
 
 string_view_t sb_view(const string_builder_t *sb) {
