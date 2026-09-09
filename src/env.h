@@ -76,6 +76,27 @@ bool env_define(env_t *env, string_view_t key, string_view_t value);
  */
 bool env_get(env_t *env, string_view_t name_pattern, string_view_t *out_value);
 
+/**
+ * Expands a pattern using execution rules. That is, it expands the pattern,
+ * and splits the evaluated string into two parts near the first space or
+ * non-variable name character.
+ *
+ * The contents of the variable the left hand string in the split points to is
+ * then evaluated with $< equal to the right hand side of the split.
+ *
+ * Example:
+ *  foo=value is $<
+ *  foo bar
+ *
+ * Expands to:
+ *  value is bar
+ *
+ * @param env Environment to use in the expansion.
+ * @param pattern The pattern to expand and "execute".
+ * @param out Stream to collect the output into.
+ *
+ * @return true on success, false if an I/O or allocation error occured.
+ */
 bool env_exec(env_t *env, string_view_t pattern, ostream_t out);
 
 /**
@@ -88,5 +109,14 @@ bool env_exec(env_t *env, string_view_t pattern, ostream_t out);
  * @return true on success, false if the output stream raised an error.
  */
 bool env_expand(env_t *env, string_view_t pattern, ostream_t out);
+
+/**
+ * Dumps the contents of the environment to the given output stream.
+ *
+ * @param env Environment to dump.
+ *
+ * @return true on success, false if an I/O error occured.
+ */
+bool env_dump(env_t *env, ostream_t out);
 
 #endif

@@ -183,3 +183,49 @@ bool env_expand(env_t *env, string_view_t pattern, ostream_t out) {
   }
   return true;
 }
+
+static bool dump_env_node(string_builder_t *acc, env_node_t *node,
+                          ostream_t out) {
+  if (NULL == node) {
+    return true;
+  }
+  if (node->value.items) {
+    if (ostream_put_sv(sb_view(acc), out) < 0) {
+      return false;
+    }
+
+    if (ostream_putc('=', out) < 0) {
+      return false;
+    }
+
+    if (ostream_puts(sb_cstr(&node->value), out) < 0) {
+      return false;
+    }
+  }
+
+  for (size_t i = 0; i < sizeof node->children / sizeof(env_node_t *); ++i) {
+    if (!node->children[i]) {
+      continue;
+    }
+
+    if (!sb_append_char(acc, (char)i)) {
+      return false;
+    }
+
+    if (!dump_env_node(acc, node->children[i], out)) {
+      return false;
+    }
+
+    acc->items[--acc->count] = 0;
+  }
+  return true;
+}
+
+bool env_dump(env_t *env, ostream_t out) {
+  string_builder_t sb = {
+      .allocator = env->allocator,
+  };
+  bool result = dump_env_node(&sb, env->root, out);
+  sb_destroy(&sb);
+  return result;
+}
