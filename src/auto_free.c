@@ -29,7 +29,9 @@ static void *auto_free_new(struct auto_free_header *header, size_t size,
   pointer->size = size;
   pointer->alignment = alignment;
 
-  header->first->prev = pointer;
+  if (header->first) {
+    header->first->prev = pointer;
+  }
   header->first = pointer;
   return pointer + 1;
 }

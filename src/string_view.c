@@ -26,6 +26,44 @@ string_view_t sv_substr(string_view_t sv, size_t index, size_t count) {
   };
 }
 
+string_view_t sv_group(string_view_t *sv, string_view_t left,
+                       string_view_t right) {
+
+  size_t pos = sv_find_substr(*sv, left, 0);
+  if (pos == (size_t)-1) {
+    return (string_view_t){0};
+  }
+  pos += left.count;
+
+  size_t region_begin = pos;
+  size_t region_count = 0;
+  int balance = 1;
+  while (balance != 0 && pos < sv->count) {
+
+    string_view_t current = sv_drop(*sv, pos);
+    if (sv_starts_with_substr(current, left)) {
+      ++balance;
+      pos += left.count;
+      region_count += left.count;
+    } else if (sv_starts_with_substr(current, right)) {
+      --balance;
+      pos += right.count;
+      region_count += right.count;
+    } else {
+      ++pos;
+      region_count += 1;
+    }
+  }
+
+  if (balance != 0) {
+    return (string_view_t){0};
+  }
+
+  string_view_t source = *sv;
+  *sv = sv_drop(source, pos);
+  return sv_substr(source, region_begin, region_count - right.count);
+}
+
 string_view_t sv_take(string_view_t sv, size_t count) {
   assert(count <= sv.count);
   return sv_substr(sv, 0, count);

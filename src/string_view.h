@@ -38,6 +38,21 @@ string_view_t sv_cstr(const char *cstr);
 string_view_t sv_substr(string_view_t sv, size_t index, size_t count);
 
 /**
+ * Read a region that exists inside two delimiters left and right (I.e read a
+ * parenthesized argument).
+ *
+ * When the function returns, the in-group string is the returned value, and the
+ * view sv points to the string after the group argument.
+ *
+ * @param[inout] sv Variable containing the view to advance.
+ * @param left Substring that opens a new group.
+ * @param right Substring that closes a group.
+ * @return The string containing the first group delimitered by left, right
+ */
+string_view_t sv_group(string_view_t *sv, string_view_t left,
+                       string_view_t right);
+
+/**
  * Gets a substring of the string-view that starts at the beginning of the
  * source string and contains count characters. If a predicate is provided,
  * only the characters that match the predicate are included.
