@@ -13,6 +13,12 @@ it to use `clang`.
 
 ## Building
 
+```sh
+./bootstrap-build
+./build
+./build
+```
+
 Since this project uses C source files as build-recipes, the recipe itself has to be compiled before it can be run.
 This can be done by either using the provided `bootstrap-build` executable, or by manually compiling the build recipe.
 
