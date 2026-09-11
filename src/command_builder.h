@@ -1,3 +1,44 @@
+// ================================================================================
+// Copyright © 2026 William Jaarma
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the “Software”), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+// ================================================================================
+
+/**
+ * @file command_builder.h
+ *
+ * Declares utilities for building and executing command lines.
+ *
+ * The main type of interest in this file is command_builder_t, which is a
+ * dynamic array implementation that stores entries of type char *.
+ *
+ * The command line is built from left to right, and may be manipulated through:
+ *
+ * - Appending string arguments
+ * - Formatting using snprintf
+ * - Expanding arguments containing environment variables
+ * - Copying
+ *
+ * This file also contains utilities for both executing and waiting for executed
+ * commands. As well as a few utilities for executing compilation-like commands.
+ */
+
 #if !defined(COMMAND_BUILDER_H_)
 #define COMMAND_BUILDER_H_
 
@@ -5,6 +46,16 @@
 #include "env.h"
 #include "string_view.h"
 
+/**
+ * Macro for rebuilding the current source file (a.k.a "self").
+ *
+ * Using this macro requires the following macros to be defined:
+ * - CC : Should expand to the name of the C compiler CLI
+ * - CFLAGS : Should expand to a comma separated list of compile-flags that ends
+ *            with NULL.
+ * - LDFLAGS : Should expand to a comma separated list of linker-flags that ends
+ *             with NULL.
+ */
 #define CMD_REBUILD_SELF() cmd_rebuild_self(__FILE__, CC, CFLAGS, LDFLAGS)
 
 typedef struct command command_t;

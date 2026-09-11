@@ -1,21 +1,45 @@
+// ================================================================================
+// Copyright © 2026 William Jaarma
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the “Software”), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+// ================================================================================
+
 // clang-format off
-//
-// dynamic_array.h
-//
-// This is a templated dynamic array implementation that is parameterized using
-// user defined macros.
-//
-// The parameters for this file are:
-//
-// - #define TYPE_0 // Structure type of the array (optional)
-// - #define TYPE_1 // Type of the items in the array (required)
-// - #define FUNCTION_0(TYPE_1 *) // Item type destructor function (optional)
-// - #define PREFIX // Prefix to prepend to all generated functions
-// - #define SUFFIX // Suffix to append to all generated symbols
-// - #define C_HEADER // If defined, treats this file as an (unguarded) C header file
-// - #define C_SOURCE // If defined, treats this file as a C source file
-// - #define HEADER_ONLY // If defined, inlines all functions and includes both the source and header
-//
+
+/**
+ * @file dynamic_array.h
+ *
+ * This is a templated dynamic array implementation that is parameterized using
+ * user defined macros.
+ *
+ * The parameters for this file are:
+ *
+ * - #define TYPE_0 // Structure type of the array (optional)
+ * - #define TYPE_1 // Type of the items in the array (required)
+ * - #define FUNCTION_0(TYPE_1 *) // Item type destructor function (optional)
+ * - #define PREFIX // Prefix to prepend to all generated functions
+ * - #define SUFFIX // Suffix to append to all generated symbols
+ * - #define C_HEADER // If defined, treats this file as an (unguarded) C header file
+ * - #define C_SOURCE // If defined, treats this file as a C source file
+ * - #define HEADER_ONLY // If defined, inlines all functions and includes both the source and header
+ */
+
 // clang-format on
 
 #if !defined(C_SOURCE) && !defined(C_HEADER) && !defined(HEADER_ONLY)

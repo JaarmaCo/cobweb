@@ -1,25 +1,49 @@
+// ================================================================================
+// Copyright © 2026 William Jaarma
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the “Software”), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+// ================================================================================
+
 // clang-format off
-//
-// hashmap.h
-//
-// This is a "templated" C header file containing a flat hashmap implementation
-// that permits parameterization using user defined macros.
-//
-// The parameters for this file are:
-//
-// - #define TYPE_0 // The hashmap structure type (optional)
-// - #define TYPE_1 // The hashmap entry type (optional)
-// - #define TYPE_2 // The key type (required)
-// - #define TYPE_3 // The value type (required)
-// - #define FUNCTION_0(TYPE_1 *) // Hashmap entry destructor (optional)
-// - #define FUNCTION_1(TYPE_2) // Key type hash function (required)
-// - #define FUNCTION_2(TYPE_3) // Key type equals function (required)
-// - #define PREFIX // Prefix to prepend to all generated function (optional)
-// - #define SUFFIX // Suffix to append to all generated symbols (optional)
-// - #define C_HEADER // If defined, produces an (unguarded) C-header file
-// - #define C_SOURCE // If defined, produces a C source file
-// - #define HEADER_ONLY // If defined, inlines all functions and includes both source and header
-//
+
+/**
+ * @file hashmap.h
+ *
+ * This is a "templated" C header file containing a flat hashmap implementation
+ * that permits parameterization using user defined macros.
+ *
+ * The parameters for this file are:
+ *
+ * - #define TYPE_0 // The hashmap structure type (optional)
+ * - #define TYPE_1 // The hashmap entry type (optional)
+ * - #define TYPE_2 // The key type (required)
+ * - #define TYPE_3 // The value type (required)
+ * - #define FUNCTION_0(TYPE_1 *) // Hashmap entry destructor (optional)
+ * - #define FUNCTION_1(TYPE_2) // Key type hash function (required)
+ * - #define FUNCTION_2(TYPE_3) // Key type equals function (required)
+ * - #define PREFIX // Prefix to prepend to all generated function (optional)
+ * - #define SUFFIX // Suffix to append to all generated symbols (optional)
+ * - #define C_HEADER // If defined, produces an (unguarded) C-header file
+ * - #define C_SOURCE // If defined, produces a C source file
+ * - #define HEADER_ONLY // If defined, inlines all functions and includes both source and header
+ */
+
 // clang-format on
 
 #if !defined(C_SOURCE) && !defined(C_HEADER) && !defined(HEADER_ONLY)
