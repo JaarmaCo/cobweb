@@ -33,6 +33,51 @@ _Noreturn static void cmd_error(command_builder_t *cmd) {
   exit(1);
 }
 
+_Noreturn void cmd_rebuild_self(const char *file, const char *cc, ...) {
+
+  env_t env = {
+      .allocator = malloc_allocator,
+  };
+  env_inherit_environ(&env);
+
+  command_builder_t command = {.allocator = malloc_allocator, .env = &env};
+
+  if (!cmd_find_executable(&command, cc)) {
+    fprintf(stderr, "Could not find compiler %s\n", cc);
+    exit(1);
+  }
+
+  va_list va;
+  va_start(va, cc);
+
+  // CFLAGS
+  for (;;) {
+    const char *arg = va_arg(va, const char *);
+    if (NULL == arg) {
+      break;
+    }
+    cmd_append(&command, arg);
+  }
+
+  // LDFLAGS
+  for (;;) {
+    const char *arg = va_arg(va, const char *);
+    if (NULL == arg) {
+      break;
+    }
+    cmd_append(&command, arg);
+  }
+
+  va_end(va);
+
+  env_define(&env, SV("file"), c_file_pattern(sv_cstr(file)));
+  cmd_expand_all(&command, "${file}.c", "-o", "${file}", NULL);
+
+  execv(command.items[0], command.items);
+  fprintf(stderr, "execv failed\n");
+  exit(1);
+}
+
 void cmd_append(command_builder_t *cmd, const char *entry) {
 
   string_builder_t sb = {

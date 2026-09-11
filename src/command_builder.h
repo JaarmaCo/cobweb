@@ -5,6 +5,8 @@
 #include "env.h"
 #include "string_view.h"
 
+#define CMD_REBUILD_SELF() cmd_rebuild_self(__FILE__, CC, CFLAGS, LDFLAGS)
+
 typedef struct command command_t;
 typedef struct command_builder command_builder_t;
 
@@ -70,6 +72,18 @@ struct command_builder {
    */
   void *handle_error_arg;
 };
+
+static inline string_view_t c_file_pattern(string_view_t filename) {
+  size_t pos = sv_rfind_substr(filename, SV(".c"), 0);
+  if (pos == (size_t)-1) {
+    fprintf(stderr, "%.*s is not a C source file", (int)filename.count,
+            filename.items);
+    exit(1);
+  }
+  return sv_take(filename, pos);
+}
+
+_Noreturn void cmd_rebuild_self(const char *file, const char *cc, ...);
 
 /**
  * Find an executable program using the command environment, and assign it as
