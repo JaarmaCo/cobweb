@@ -86,6 +86,43 @@ static inline string_view_t c_file_pattern(string_view_t filename) {
 _Noreturn void cmd_rebuild_self(const char *file, const char *cc, ...);
 
 /**
+ * Use the current command line as a template to compile the provided source
+ * files.
+ *
+ * @param cmd Command line to use.
+ * @param src_dir Directory where the source files are contained.
+ * @param out_dir Directory to put the object files in.
+ * @param va NULL-terminated variadic list of source file names (const char *).
+ */
+void cmd_compile(command_builder_t *cmd, const char *src_dir,
+                 const char *out_dir, ...);
+
+/**
+ * Use the current command line state as a template for building and running a
+ * test C source file.
+ *
+ * @param cmd Command line to use.
+ * @param test_dir Directory where the test is located.
+ * @param out_dir Output directory to put intermediate files in.
+ * @param test Name of the test source file.
+ * @param va NULL-terminated variadic list of source file names (const char *).
+ *           The source files in this list have to already have been compiled
+ *           using cmd_compile.
+ */
+void cmd_run_test(command_builder_t *cmd, const char *test_dir,
+                  const char *out_dir, const char *test, ...);
+
+/**
+ * Enables output to stderr on an error.
+ */
+void cmd_enable_error_output(command_builder_t *cmd);
+
+/**
+ * Ensure the provided directory exists.
+ */
+void cmd_ensure_directory(const char *dirname);
+
+/**
  * Find an executable program using the command environment, and assign it as
  * argv[0].
  *

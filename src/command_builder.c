@@ -10,6 +10,18 @@
 #define HEADER_ONLY
 #include "dynamic_array.h"
 
+#define TYPE_1 command_t *
+#define HEADER_ONLY
+#define PREFIX da_
+#define SUFFIX _cmd
+#include "dynamic_array.h"
+
+#define TYPE_1 int
+#define HEADER_ONLY
+#define PREFIX da_
+#define SUFFIX _i
+#include "dynamic_array.h"
+
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,6 +88,123 @@ _Noreturn void cmd_rebuild_self(const char *file, const char *cc, ...) {
   execv(command.items[0], command.items);
   fprintf(stderr, "execv failed\n");
   exit(1);
+}
+
+void cmd_compile(command_builder_t *cmd, const char *src_dir,
+                 const char *out_dir, ...) {
+
+  allocator_t *scratch = scratch_allocator(1024 * 1024);
+  command_builder_t local = {
+      .allocator = scratch,
+  };
+  dynamic_array_cmd runs = {
+      .allocator = scratch,
+  };
+  dynamic_array_i exit_codes = {
+      .allocator = scratch,
+  };
+  va_list va;
+  va_start(va, out_dir);
+  for (;;) {
+
+    const char *src = va_arg(va, const char *);
+    if (NULL == src) {
+      break;
+    }
+
+    cmd_clone(&local, cmd);
+
+    string_view_t filename = sv_cstr(src);
+    filename = c_file_pattern(filename);
+
+    env_define(local.env, SV("file"), filename);
+    env_define(local.env, SV("src_dir"), sv_cstr(src_dir));
+    env_define(local.env, SV("out_dir"), sv_cstr(out_dir));
+
+    cmd_expand_all(&local, "-c", "${src_dir}${file}.c", "-o",
+                   "${out_dir}${file}.o", NULL);
+
+    da_append_cmd(&runs, cmd_exec_async(&local));
+    da_append_i(&exit_codes, 0);
+  }
+  va_end(va);
+
+  cmd_wait_every(runs.count, runs.items, exit_codes.items);
+  for (size_t i = 0; i < exit_codes.count; ++i) {
+    if (exit_codes.items[i] != 0) {
+      fprintf(stderr, "%s exited with a nonzero exit code", cmd->items[0]);
+      exit(1);
+    }
+  }
+}
+
+void cmd_ensure_directory(const char *dirname) {
+  struct stat st;
+  if (stat(dirname, &st) == -1) {
+    mkdir(dirname, 0777);
+  }
+}
+
+void cmd_report_errors(command_builder_t *cmd, int ec, string_view_t message,
+                       void *user) {
+  (void)ec;
+  (void)user;
+  fprintf(stderr, "ERROR: ");
+  for (size_t i = 0; i < cmd->count; ++i) {
+    if (i != 0) {
+      fputc(' ', stderr);
+    }
+    fprintf(stderr, "%s", cmd->items[i]);
+  }
+  fprintf(stderr, " :: %.*s", (int)message.count, message.items);
+}
+
+void cmd_enable_error_output(command_builder_t *cmd) {
+  cmd->handle_error = cmd_report_errors;
+}
+
+void cmd_run_test(command_builder_t *cmd, const char *test_dir,
+                  const char *out_dir, const char *test, ...) {
+  allocator_t *allocator = scratch_allocator(1024 * 1024);
+  command_builder_t cc = {
+      .allocator = allocator,
+  };
+  cmd_clone(&cc, cmd);
+
+  env_define(cc.env, SV("out_dir"), sv_cstr(out_dir));
+  env_define(cc.env, SV("test_dir"), sv_cstr(test_dir));
+
+  va_list va;
+  va_start(va, test);
+  for (;;) {
+
+    const char *arg = va_arg(va, const char *);
+    if (!arg) {
+      break;
+    }
+
+    env_define(cc.env, SV("file"), c_file_pattern(sv_cstr(arg)));
+    cmd_expand(&cc, "${out_dir}${file}.o");
+  }
+  va_end(va);
+
+  env_define(cc.env, SV("file"), c_file_pattern(sv_cstr(test)));
+  cmd_expand_all(&cc, "-o", "${out_dir}${test_dir}${file}",
+                 "${test_dir}${file}.c", NULL);
+  int ec = cmd_exec_sync(&cc);
+  if (ec != 0) {
+    fprintf(stderr, "%s exited with a nonzero exit code.\n", cc.items[0]);
+    exit(1);
+  }
+
+  cmd_reset(&cc);
+  cmd_expand(&cc, "./${out_dir}${test_dir}${file}");
+
+  ec = cmd_exec_sync(&cc);
+  if (ec != 0) {
+    fprintf(stderr, "Test %s failed with exit code %d\n", test, ec);
+    exit(1);
+  }
 }
 
 void cmd_append(command_builder_t *cmd, const char *entry) {
