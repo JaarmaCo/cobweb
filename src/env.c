@@ -20,6 +20,14 @@ bool env_define(env_t *env, string_view_t key, string_view_t value) {
   if (!sb_append_sv(&sb, value)) {
     return false;
   }
+
+  env_node_t *node = env_find(env, key);
+  if (node) {
+    sb_destroy(&node->value);
+    node->value = sb;
+    return true;
+  }
+
   if (!env_insert(env, key, sb)) {
     sb_destroy(&sb);
     return false;
