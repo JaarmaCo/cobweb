@@ -237,7 +237,7 @@ command_t *cmd_exec_(command_builder_t *cmd, int *out_error) {
   } else if (pid == 0) {
 
     close(fds[0]);
-    fcntl(fds[1], FD_CLOEXEC);
+    fcntl(fds[1], F_SETFD, FD_CLOEXEC);
 
     execv(cmd->items[0], cmd->items);
 
