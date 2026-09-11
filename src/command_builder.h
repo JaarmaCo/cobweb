@@ -113,6 +113,12 @@ void cmd_run_test(command_builder_t *cmd, const char *test_dir,
                   const char *out_dir, const char *test, ...);
 
 /**
+ * Use the current state of the command builder to write a compile_flags.txt
+ * file.
+ */
+void cmd_write_compilation_database(command_builder_t *cmd);
+
+/**
  * Enables output to stderr on an error.
  */
 void cmd_enable_error_output(command_builder_t *cmd);

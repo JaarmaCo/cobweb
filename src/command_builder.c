@@ -90,6 +90,18 @@ _Noreturn void cmd_rebuild_self(const char *file, const char *cc, ...) {
   exit(1);
 }
 
+void cmd_write_compilation_database(command_builder_t *cmd) {
+  FILE *f = fopen("compile_flags.txt", "w");
+  if (NULL == f) {
+    return;
+  }
+  for (size_t i = 0; i < cmd->count; ++i) {
+    fputs(cmd->items[i], f);
+    fputc('\n', f);
+  }
+  fclose(f);
+}
+
 void cmd_compile(command_builder_t *cmd, const char *src_dir,
                  const char *out_dir, ...) {
   allocator_t *old_scratch = scratch_allocator_pop();

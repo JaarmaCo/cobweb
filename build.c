@@ -79,14 +79,21 @@ int main(int argc, char **argv) {
   cmd_echo_to(&cc, stdout);
   cmd_enable_error_output(&cc);
 
-  cmd_ensure_directory(OUT_DIR);
-  cmd_ensure_directory(OUT_DIR TEST_DIR);
-
   if (!cmd_find_executable(&cc, CC)) {
     fputs(CC " is not a known executable.", stderr);
     exit(1);
   }
   cmd_append_all(&cc, CFLAGS);
+
+#if defined(BOOTSTRAP_BUILD)
+
+  cmd_write_compilation_database(&cc);
+  CMD_REBUILD_SELF();
+
+#else
+
+  cmd_ensure_directory(OUT_DIR);
+  cmd_ensure_directory(OUT_DIR TEST_DIR);
 
   cmd_compile(&cc, SRC_DIR, OUT_DIR, SOURCES);
   cmd_compile(&cc, TEST_DIR, OUT_DIR TEST_DIR, TESTS);
@@ -100,4 +107,5 @@ int main(int argc, char **argv) {
     }
   }
   return 0;
+#endif
 }
