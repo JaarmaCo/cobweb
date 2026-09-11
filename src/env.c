@@ -11,23 +11,6 @@
 
 static int is_varname(int ch) { return isalnum(ch) || ch == '-' || ch == '<'; }
 
-env_t *env_create(allocator_t *allocator) {
-  allocator_t *afa = auto_free_allocator(allocator);
-  if (NULL == afa) {
-    return NULL;
-  }
-  env_t *env = allocator_new(afa, sizeof(env_t), _Alignof(env_t));
-  if (NULL == env) {
-    return NULL;
-  }
-  env->count = 0;
-  env->root = NULL;
-  env->allocator = afa;
-  return env;
-}
-
-void env_destroy(env_t *env) { auto_free_destroy(env->allocator); }
-
 bool env_define(env_t *env, string_view_t key, string_view_t value) {
   string_builder_t sb = {.allocator = env->allocator};
   if (!sb_append_sv(&sb, value)) {

@@ -18,21 +18,6 @@ struct string_pool {
 };
 
 /**
- * Free all strings in a string pool.
- */
-void string_pool_destroy(string_pool_t *pool);
-
-/**
- * Creates a new string pool.
- *
- * @param[out] pool Pointer to a variable where the pool is created.
- * @param allocator Allocator to use for allocations.
- *
- * @return true on success.
- */
-bool string_pool_create(string_pool_t *pool, allocator_t *allocator);
-
-/**
  * Fetch an existing string from the string pool, or allocate a new string.
  *
  * @param pool String pool to extract a string from.
@@ -49,23 +34,6 @@ bool string_pool_extract(string_pool_t *pool, string_view_t *string);
 #if defined(STRING_POOL_IMPLEMENTATION)
 
 #include <string.h>
-
-void string_pool_destroy(string_pool_t *pool) {
-  if (!pool) {
-    return;
-  }
-  auto_free_destroy(pool->allocator);
-  *pool = (string_pool_t){0};
-}
-
-bool string_pool_create(string_pool_t *pool, allocator_t *allocator) {
-  pool->allocator = auto_free_allocator(allocator);
-  if (NULL == pool->allocator) {
-    return false;
-  }
-  pool->root = NULL;
-  return true;
-}
 
 static bool string_pool_allocate(string_pool_t *pool, string_pool_node_t *node,
                                  size_t pos, string_view_t *string) {

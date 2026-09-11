@@ -39,20 +39,6 @@ struct env_node {
 #include "trie.h"
 
 /**
- * Allocate a new environment.
- *
- * @param allocator Allocator to use when allocating environment memory.
- *
- * @return The new environment, or NULL on an allocation error.
- */
-env_t *env_create(allocator_t *allocator);
-
-/**
- * Release all resources held by an environment.
- */
-void env_destroy(env_t *env);
-
-/**
  * Define a new environment variable.
  *
  * @param env Environment to modify.
