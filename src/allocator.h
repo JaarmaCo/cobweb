@@ -265,4 +265,11 @@ void *allocator_resize(allocator_t *allocator, void *hint, size_t old_size,
 void allocator_release(allocator_t *allocator, void *memory, size_t size,
                        size_t alignment);
 
+#if defined(UNITY_BUILD)
+#include "allocator.c"
+#include "arena_allocator.c"
+#include "auto_free.c"
+#include "scratch_allocator.c"
+#endif
+
 #endif // !defined(ALLOCATOR_H_)

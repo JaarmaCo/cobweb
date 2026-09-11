@@ -1,4 +1,6 @@
+#if !defined(UNITY_BUILD)
 #include "allocator.h"
+#endif
 
 #include <string.h>
 

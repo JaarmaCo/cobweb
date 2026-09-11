@@ -1,4 +1,6 @@
+#if !defined(UNITY_BUILD)
 #include "json.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>

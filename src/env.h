@@ -50,6 +50,15 @@ struct env_node {
 bool env_define(env_t *env, string_view_t key, string_view_t value);
 
 /**
+ * Add defines for every entry in the system environment.
+ *
+ * @param env Environment to modify
+ *
+ * @return true on success.
+ */
+bool env_inherit_environ(env_t *env);
+
+/**
  * Extracts a variable from the environment.
  *
  * @param env Environment to fetch a value from.
@@ -105,4 +114,7 @@ bool env_expand(env_t *env, string_view_t pattern, ostream_t out);
  */
 bool env_dump(env_t *env, ostream_t out);
 
+#if defined(UNITY_BUILD)
+#include "env.c"
+#endif
 #endif

@@ -1,4 +1,6 @@
+#if !defined(UNITY_BUILD)
 #include "string_builder.h"
+#endif
 
 #define TYPE_1 char
 #define SUFFIX _c

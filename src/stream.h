@@ -60,4 +60,7 @@ int ostream_format(ostream_t ostream, const char *fmt, ...);
 
 int ostream_vformat(ostream_t ostream, const char *fmt, va_list va);
 
+#if defined(UNITY_BUILD)
+#include "stream.c"
+#endif
 #endif

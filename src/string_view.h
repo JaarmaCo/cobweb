@@ -1,4 +1,5 @@
 #if !defined(STRING_VIEW_H_)
+#define STRING_VIEW_H_
 
 #include <stdarg.h>
 #include <stdbool.h>
@@ -320,5 +321,8 @@ string_view_t sv_read_ld(string_view_t sv, long double *out, int base);
  * @}
  */
 
-#define STRING_VIEW_H_
+#if defined(UNITY_BUILD)
+#include "string_view.c"
+#include "sv_read.c"
+#endif
 #endif

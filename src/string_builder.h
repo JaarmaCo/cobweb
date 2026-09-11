@@ -1,4 +1,5 @@
 #if !defined(STRING_BUILDER_H_)
+#define STRING_BUILDER_H_
 
 #include <stdio.h>
 
@@ -171,5 +172,7 @@ char *sb_read_line(string_builder_t *sb, FILE *f);
  */
 char *sb_read_until(string_builder_t *sb, FILE *f, string_view_t delim);
 
-#define STRING_BUILDER_H_
+#if defined(UNITY_BUILD)
+#include "string_builder.c"
+#endif
 #endif

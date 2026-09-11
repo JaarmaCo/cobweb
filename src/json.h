@@ -1,4 +1,5 @@
 #ifndef JSON_H_
+#define JSON_H_
 
 #include <stdint.h>
 
@@ -582,5 +583,9 @@ json_node_t json_vpath(json_node_t node, const char *path, va_list va);
  * @}
  */
 
-#define JSON_H_
+#if defined(UNITY_BUILD)
+#include "json.c"
+#include "json_parse.c"
+#include "json_value_parser.c"
+#endif
 #endif

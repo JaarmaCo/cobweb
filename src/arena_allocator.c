@@ -1,4 +1,6 @@
+#if !defined(UNITY_BUILD)
 #include "allocator.h"
+#endif
 
 #include <assert.h>
 #include <stddef.h>
@@ -14,11 +16,11 @@ struct arena_header {
 
 static void *arena_allocate(allocator_t *arena,
                             const allocation_t *allocation) {
-  assert(allocation->old_size <= allocation->new_size);
   if (allocation->new_size == 0) {
     return NULL;
   }
 
+  assert(allocation->old_size <= allocation->new_size);
   struct arena_header *header = (struct arena_header *)arena->data;
 
   if (allocation->memory ==

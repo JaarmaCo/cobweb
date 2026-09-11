@@ -1,4 +1,7 @@
+#if !defined(UNITY_BUILD)
 #include "allocator.h"
+#endif
+
 #include <assert.h>
 #include <stdlib.h>
 

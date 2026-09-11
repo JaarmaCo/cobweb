@@ -1,4 +1,6 @@
+#if !defined(UNITY_BUILD)
 #include "env.h"
+#endif
 
 #include <ctype.h>
 
@@ -8,6 +10,8 @@
 #define PREFIX env_
 #define C_SOURCE
 #include "trie.h"
+
+extern char **environ;
 
 static int is_varname(int ch) { return isalnum(ch) || ch == '-' || ch == '<'; }
 
@@ -19,6 +23,20 @@ bool env_define(env_t *env, string_view_t key, string_view_t value) {
   if (!env_insert(env, key, sb)) {
     sb_destroy(&sb);
     return false;
+  }
+  return true;
+}
+
+bool env_inherit_environ(env_t *env) {
+
+  for (size_t i = 0; environ[i]; ++i) {
+
+    string_view_t entry = sv_cstr(environ[i]);
+    string_view_t key = sv_cut_ch(&entry, '=');
+
+    if (!env_define(env, key, entry)) {
+      return false;
+    }
   }
   return true;
 }

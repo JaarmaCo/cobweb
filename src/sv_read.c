@@ -1,5 +1,8 @@
-#include "format.h"
+#if !defined(UNITY_BUILD)
 #include "string_view.h"
+#endif
+
+#include "format.h"
 
 #include <assert.h>
 #include <math.h>

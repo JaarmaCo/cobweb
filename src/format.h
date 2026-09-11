@@ -1,4 +1,5 @@
 #ifndef FORMAT_H_
+#define FORMAT_H_
 
 #include <stdarg.h>
 
@@ -18,5 +19,7 @@ int fmt_parse_specifier(string_view_t *fmt, format_specifier_t *directive);
 
 void fmt_fetch_lengths(format_specifier_t *directive, va_list *va);
 
-#define FORMAT_H_
+#if defined(UNITY_BUILD)
+#include "format.c"
+#endif
 #endif

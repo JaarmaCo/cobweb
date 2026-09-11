@@ -1,4 +1,6 @@
+#if !defined(UNITY_BUILD)
 #include "stream.h"
+#endif
 
 #include <ctype.h>
 #include <errno.h>

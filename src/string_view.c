@@ -1,4 +1,6 @@
+#if !defined(UNITY_BUILD)
 #include "string_view.h"
+#endif
 
 #include <assert.h>
 #include <stdbool.h>
@@ -238,7 +240,7 @@ size_t sv_find_char(string_view_t sv, char ch, size_t offset) {
 size_t sv_rfind_char(string_view_t sv, char ch, size_t offset) {
   for (size_t i = offset; i < sv.count; ++i) {
     if (sv.items[sv.count - i - 1] == ch) {
-      return i;
+      return sv.count - i - 1;
     }
   }
   return (size_t)-1;
@@ -263,7 +265,7 @@ size_t sv_rfind_substr(string_view_t sv, string_view_t substr, size_t offset) {
   for (size_t i = offset; i + substr.count < sv.count; ++i) {
     if (strncmp(sv.items + sv.count - i - substr.count, substr.items,
                 substr.count) == 0) {
-      return i;
+      return sv.count - i - substr.count;
     }
   }
   return (size_t)-1;

@@ -1,4 +1,6 @@
+#if !defined(UNITY_BUILD)
 #include "format.h"
+#endif
 
 void fmt_fetch_lengths(format_specifier_t *spec, va_list *va) {
   if (spec->field_width == FORMAT_INPUT_VALUE) {
