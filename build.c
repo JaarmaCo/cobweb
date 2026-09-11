@@ -27,6 +27,7 @@
   "-Wextra",    \
   "-Wpedantic", \
   "-Werror",    \
+  "-ggdb",      \
   "-Isrc",      \
   NULL
 #define SOURCES \
@@ -76,7 +77,7 @@ string_view_t c_file_pattern(string_view_t filename) {
 void compile(command_builder_t *cmd, const char *src_dir, const char *out_dir,
              ...) {
 
-  allocator_t *scratch = scratch_allocator(1024);
+  allocator_t *scratch = scratch_allocator(1024 * 1024);
   command_builder_t local = {
       .allocator = scratch,
   };
@@ -160,7 +161,10 @@ int main(void) {
   };
   cmd_echo_to(&cc, stdout);
 
-  cmd_append(&cc, CC);
+  if (!cmd_find_executable(&cc, CC)) {
+    fputs(CC " is not a known executable.", stderr);
+    exit(1);
+  }
   cmd_append_all(&cc, CFLAGS);
 
   compile(&cc, SRC_DIR, OUT_DIR, SOURCES);

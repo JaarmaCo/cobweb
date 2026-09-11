@@ -158,8 +158,7 @@ void cmd_clone(command_builder_t *cmd, const command_builder_t *source) {
   }
 }
 
-static char *cmd_find_executable_(command_builder_t *cmd,
-                                  string_builder_t *out_str) {
+bool cmd_find_executable(command_builder_t *cmd, const char *name) {
   string_view_t path;
   env_get(cmd->env, SV("PATH"), &path);
 
@@ -177,26 +176,23 @@ static char *cmd_find_executable_(command_builder_t *cmd,
     if (!sv_ends_with_char(entry, '/')) {
       sb_append_char(&sb, '/');
     }
-    sb_append_cstr(&sb, cmd->items[0]);
+    sb_append_cstr(&sb, name);
 
     struct stat st;
     if (stat(sb_cstr(&sb), &st) != -1 && (st.st_mode & S_IXUSR)) {
-      *out_str = sb;
-      return sb_cstr(&sb);
+      if (!cmd_reserve_(cmd, 2)) {
+        cmd_error(cmd);
+      }
+      cmd->items[0] = sb.items;
+      cmd->count = cmd->count == 0 ? 1 : cmd->count;
+      cmd->items[cmd->count] = NULL;
+      return true;
     }
-    sb_destroy(&sb);
   }
-  return NULL;
+  return false;
 }
 
 command_t *cmd_exec_(command_builder_t *cmd, int *out_error) {
-
-  string_builder_t sb = {0};
-  char *executable = cmd_find_executable_(cmd, &sb);
-  if (!executable) {
-    *out_error = ENOENT;
-    return NULL;
-  }
 
   if (cmd->echo_channel) {
     for (size_t i = 0; i < cmd->count; ++i) {
@@ -204,7 +200,7 @@ command_t *cmd_exec_(command_builder_t *cmd, int *out_error) {
         fprintf(cmd->echo_channel, " ");
         fprintf(cmd->echo_channel, "'%s'", cmd->items[i]);
       } else {
-        fprintf(cmd->echo_channel, "%s", executable);
+        fprintf(cmd->echo_channel, "%s", cmd->items[i]);
       }
     }
     fputc('\n', cmd->echo_channel);
@@ -213,14 +209,12 @@ command_t *cmd_exec_(command_builder_t *cmd, int *out_error) {
   command_t *result =
       allocator_new(cmd->allocator, sizeof(command_t), _Alignof(command_t));
   if (NULL == result) {
-    sb_destroy(&sb);
     *out_error = errno;
     return NULL;
   }
 
   int fds[2];
   if (pipe(fds) == -1) {
-    sb_destroy(&sb);
     allocator_release(cmd->allocator, result, sizeof(command_t),
                       _Alignof(command_t));
     *out_error = errno;
@@ -236,7 +230,6 @@ command_t *cmd_exec_(command_builder_t *cmd, int *out_error) {
     close(fds[0]);
     close(fds[1]);
 
-    sb_destroy(&sb);
     allocator_release(cmd->allocator, result, sizeof(command_t),
                       _Alignof(command_t));
     return NULL;
@@ -246,7 +239,7 @@ command_t *cmd_exec_(command_builder_t *cmd, int *out_error) {
     close(fds[0]);
     fcntl(fds[1], FD_CLOEXEC);
 
-    execv(executable, cmd->items);
+    execv(cmd->items[0], cmd->items);
 
     int err = errno;
     write(fds[1], &err, sizeof(int));
@@ -264,18 +257,15 @@ command_t *cmd_exec_(command_builder_t *cmd, int *out_error) {
 
   if (nr == -1) {
     *out_error = err;
-    sb_destroy(&sb);
     allocator_release(cmd->allocator, result, sizeof(command_t),
                       _Alignof(command_t));
     return NULL;
   } else if (nr != sizeof(int) && nr != 0) {
     *out_error = EBADMSG;
-    sb_destroy(&sb);
     allocator_release(cmd->allocator, result, sizeof(command_t),
                       _Alignof(command_t));
     return NULL;
   } else if (nr == sizeof(int)) {
-    sb_destroy(&sb);
     allocator_release(cmd->allocator, result, sizeof(command_t),
                       _Alignof(command_t));
     return NULL;

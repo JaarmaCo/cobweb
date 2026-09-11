@@ -72,6 +72,14 @@ struct command_builder {
 };
 
 /**
+ * Find an executable program using the command environment, and assign it as
+ * argv[0].
+ *
+ * @return true if the executable was found.
+ */
+bool cmd_find_executable(command_builder_t *cmd, const char *name);
+
+/**
  * Append a nul-terminated string to the command list.
  */
 void cmd_append(command_builder_t *cmd, const char *entry);
