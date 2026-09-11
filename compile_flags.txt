@@ -1,7 +1,0 @@
-/usr/bin/gcc
--Wall
--Wextra
--Wpedantic
--Werror
--ggdb
--Isrc
