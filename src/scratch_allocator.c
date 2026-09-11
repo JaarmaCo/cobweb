@@ -23,3 +23,14 @@ allocator_t *scratch_allocator(size_t buffer_size) {
   scratch_arena = arena_allocator(buffer_size, new_arena);
   return scratch_arena;
 }
+
+allocator_t *scratch_allocator_pop(void) {
+  allocator_t *arena = scratch_arena;
+  scratch_arena = NULL;
+  return arena;
+}
+
+void scratch_allocator_restore(allocator_t *old_allocator) {
+  free(scratch_arena);
+  scratch_arena = old_allocator;
+}

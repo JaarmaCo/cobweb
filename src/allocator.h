@@ -161,6 +161,23 @@ allocator_t *arena_allocator(size_t buffer_size, void *buffer);
 allocator_t *scratch_allocator(size_t min_size);
 
 /**
+ * Detaches the current scratch allocator, making the allocator slot available
+ * for a new scratch allocator instance.
+ *
+ * @return The old scratch allocator.
+ */
+allocator_t *scratch_allocator_pop(void);
+
+/**
+ * Restores an old scratch allocator instance, making it the active scratch
+ * allocator.
+ *
+ * @param old_allocator The return value of a previous call to
+ *                      scratch_allocator_pop.
+ */
+void scratch_allocator_restore(allocator_t *old_allocator);
+
+/**
  * Creates an allocator that permits freeing all allocated blocks in one call.
  *
  * @param upstream Allocator used to allocate the actual memory.

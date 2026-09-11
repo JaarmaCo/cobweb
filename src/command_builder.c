@@ -92,7 +92,7 @@ _Noreturn void cmd_rebuild_self(const char *file, const char *cc, ...) {
 
 void cmd_compile(command_builder_t *cmd, const char *src_dir,
                  const char *out_dir, ...) {
-
+  allocator_t *old_scratch = scratch_allocator_pop();
   allocator_t *scratch = scratch_allocator(1024 * 1024);
   command_builder_t local = {
       .allocator = scratch,
@@ -136,6 +136,7 @@ void cmd_compile(command_builder_t *cmd, const char *src_dir,
       exit(1);
     }
   }
+  scratch_allocator_restore(old_scratch);
 }
 
 void cmd_ensure_directory(const char *dirname) {
@@ -165,6 +166,7 @@ void cmd_enable_error_output(command_builder_t *cmd) {
 
 void cmd_run_test(command_builder_t *cmd, const char *test_dir,
                   const char *out_dir, const char *test, ...) {
+  allocator_t *old_allocator = scratch_allocator_pop();
   allocator_t *allocator = scratch_allocator(1024 * 1024);
   command_builder_t cc = {
       .allocator = allocator,
@@ -205,6 +207,8 @@ void cmd_run_test(command_builder_t *cmd, const char *test_dir,
     fprintf(stderr, "Test %s failed with exit code %d\n", test, ec);
     exit(1);
   }
+
+  scratch_allocator_restore(old_allocator);
 }
 
 void cmd_append(command_builder_t *cmd, const char *entry) {
@@ -333,6 +337,13 @@ void cmd_clone(command_builder_t *cmd, const command_builder_t *source) {
 }
 
 bool cmd_find_executable(command_builder_t *cmd, const char *name) {
+
+  struct stat st;
+  if (stat(name, &st) != -1 && (st.st_mode & S_IXUSR)) {
+    cmd_append(cmd, name);
+    return true;
+  }
+
   string_view_t path;
   env_get(cmd->env, SV("PATH"), &path);
 
@@ -352,7 +363,6 @@ bool cmd_find_executable(command_builder_t *cmd, const char *name) {
     }
     sb_append_cstr(&sb, name);
 
-    struct stat st;
     if (stat(sb_cstr(&sb), &st) != -1 && (st.st_mode & S_IXUSR)) {
       if (!cmd_reserve_(cmd, 2)) {
         cmd_error(cmd);
