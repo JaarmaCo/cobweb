@@ -55,11 +55,16 @@
 
 int main(int argc, char **argv) {
 
+  bool run_tests = false;
+
   while (argc > 0) {
     if (cl_switch("--self", &argc, &argv)) {
       CMD_REBUILD_SELF();
+    } else if (cl_switch("--test", &argc, &argv)) {
+      run_tests = true;
+    } else {
+      cl_shift(&argc, &argv);
     }
-    cl_shift(&argc, &argv);
   }
 
   env_t env = {
@@ -86,11 +91,13 @@ int main(int argc, char **argv) {
   cmd_compile(&cc, SRC_DIR, OUT_DIR, SOURCES);
   cmd_compile(&cc, TEST_DIR, OUT_DIR TEST_DIR, TESTS);
 
-  cmd_append_all(&cc, LDFLAGS);
+  if (run_tests) {
+    cmd_append_all(&cc, LDFLAGS);
 
-  const char *tests[] = {TESTS};
-  for (size_t i = 0; tests[i]; ++i) {
-    cmd_run_test(&cc, TEST_DIR, OUT_DIR, tests[i], SOURCES);
+    const char *tests[] = {TESTS};
+    for (size_t i = 0; tests[i]; ++i) {
+      cmd_run_test(&cc, TEST_DIR, OUT_DIR, tests[i], SOURCES);
+    }
   }
   return 0;
 }
