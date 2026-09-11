@@ -181,26 +181,6 @@
 #define M_COMMA_T
 #define M_COMMA(Lst) M_CAT(M_COMMA_, Lst)
 
-#define M_ENUM_MEMB(I, Fst, Lst, M) M M_COMMA(Lst)
-#define M_ENUM_TOSTR(I, Fst, Lst, M)                                           \
-  case M:                                                                      \
-    return #M;
-
-// Define an enum with an automatically generated to_cstr function.
-//
-// Typename : Name of the enum
-// __VA_ARGS__ : Enumeration values
-//
-#define M_ENUM(Typename, ...)                                                  \
-  enum Typename { M_FOREACH(M_ENUM_MEMB, __VA_ARGS__) };                       \
-  static inline const char *M_CAT(Typename, _to_cstr)(enum Typename value) {   \
-    switch (value) {                                                           \
-      M_FOREACH(M_ENUM_TOSTR, __VA_ARGS__)                                     \
-    default:                                                                   \
-      return "<unknown>";                                                      \
-    }                                                                          \
-  }
-
 #define M_NAME(base) M_CAT3(PREFIX, base, SUFFIX)
 #define M_TYPENAME M_NAME(TYPE_0)
 
