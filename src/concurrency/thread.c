@@ -24,6 +24,7 @@
 #include "thread.h"
 #endif
 
+#include <assert.h>
 #include <pthread.h>
 #include <setjmp.h>
 #include <stdatomic.h>
@@ -57,14 +58,17 @@ static _Thread_local thread_t *this_thread_ = NULL;
 thread_t *thread_get_this(void) { return this_thread_; }
 
 allocator_t *thread_get_allocator(thread_t *thread) {
+  assert(NULL != thread);
   return thread->allocator;
 }
 
 size_t thread_get_iteration(thread_t *thread) {
+  assert(NULL != thread);
   return atomic_load(&thread->iteration);
 }
 
 thread_state_t thread_get_current_state(thread_t *thread) {
+  assert(NULL != thread);
   thread_state_t state;
   pthread_mutex_lock(&thread->lock);
   {
@@ -75,6 +79,7 @@ thread_state_t thread_get_current_state(thread_t *thread) {
 }
 
 char *thread_get_name(thread_t *thread, char *out_items, size_t *out_count) {
+  assert(NULL != thread);
   pthread_mutex_lock(&thread->lock);
   {
     if (out_items) {
@@ -91,17 +96,20 @@ char *thread_get_name(thread_t *thread, char *out_items, size_t *out_count) {
 }
 
 void thread_set_name(thread_t *thread, string_view_t name) {
+  assert(NULL != thread);
   pthread_mutex_lock(&thread->lock);
   {
     size_t length = name.count > THREAD_MAX_NAME_LENGTH ? THREAD_MAX_NAME_LENGTH
                                                         : name.count;
-    strncpy(thread->name.data, name.items, length);
+    memcpy(thread->name.data, name.items, length);
+    thread->name.data[length] = '\0';
     thread->name.count = length;
   }
   pthread_mutex_unlock(&thread->lock);
 }
 
 void thread_at_exit(thread_t *thread, void (*cleanup)(void *)) {
+  assert(NULL != thread);
   pthread_mutex_lock(&thread->lock);
   {
     thread->at_exit = cleanup;
@@ -110,6 +118,7 @@ void thread_at_exit(thread_t *thread, void (*cleanup)(void *)) {
 }
 
 void thread_at_init(thread_t *thread, void (*init)(void *)) {
+  assert(NULL != thread);
   pthread_mutex_lock(&thread->lock);
   {
     thread->at_init = init;
@@ -171,9 +180,16 @@ static void *thread_run(void *arg) {
   thread_t *thread = arg;
   thread_state_t next_state = thread_suspend(thread);
 
-  this_thread_ = thread;
-  if (thread->at_init) {
-    thread->at_init(thread->arg);
+  void (*at_init)(void *);
+  pthread_mutex_lock(&thread->lock);
+  {
+    this_thread_ = thread;
+    at_init = thread->at_init;
+  }
+  pthread_mutex_unlock(&thread->lock);
+
+  if (at_init) {
+    at_init(thread->arg);
   }
 
   for (;;) {
@@ -196,6 +212,8 @@ destroy:
 
 thread_t *thread_create(allocator_t *allocator, void (*run)(void *),
                         void *arg) {
+
+  assert(NULL != run);
 
   thread_t *thread =
       allocator_new(allocator, sizeof(thread_t), _Alignof(thread_t));
@@ -235,6 +253,8 @@ err:
 }
 
 void thread_start(thread_t *thread) {
+  assert(NULL != thread);
+  assert(thread != this_thread_);
   pthread_mutex_lock(&thread->lock);
   {
     thread->state = THREAD_STATE_RUNNING;
@@ -244,7 +264,8 @@ void thread_start(thread_t *thread) {
 }
 
 void thread_detach(thread_t *thread) {
-
+  assert(NULL != thread);
+  assert(thread != this_thread_);
   pthread_mutex_lock(&thread->lock);
   {
     pthread_detach(thread->impl);
@@ -256,6 +277,8 @@ void thread_detach(thread_t *thread) {
 }
 
 void thread_await(thread_t *thread) {
+  assert(NULL != thread);
+  assert(thread != this_thread_);
   pthread_mutex_lock(&thread->lock);
   {
     while (thread->state == THREAD_STATE_RUNNING) {
@@ -267,7 +290,8 @@ void thread_await(thread_t *thread) {
 }
 
 void thread_join(thread_t *thread) {
-
+  assert(NULL != thread);
+  assert(NULL != this_thread_);
   pthread_mutex_lock(&thread->lock);
   {
     thread->state = THREAD_STATE_DETACHED;
@@ -279,4 +303,7 @@ void thread_join(thread_t *thread) {
   pthread_join(thread->impl, NULL);
 }
 
-void thread_exit(void) { longjmp(this_thread_->unwind_buffer, 1); }
+void thread_exit(void) {
+  assert(NULL != this_thread_);
+  longjmp(this_thread_->unwind_buffer, 1);
+}
