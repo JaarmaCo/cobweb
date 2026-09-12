@@ -76,6 +76,7 @@
   "string_builder.c", \
   "string_view.c", \
   "sv_read.c", \
+  "concurrency/thread.c", \
   NULL
 
 #define TESTS \
@@ -83,6 +84,7 @@
   "hashmap.c", \
   "json.c", \
   "string_builder.c", \
+  "thread.c", \
   NULL
 
 // clang-format on
@@ -134,6 +136,7 @@ int main(int argc, char **argv) {
 #else
 
   cmd_ensure_directory(OUT_DIR);
+  cmd_ensure_directory(OUT_DIR "concurrency/");
   cmd_ensure_directory(OUT_DIR TEST_DIR);
 
   cmd_compile(&cc, SRC_DIR, OUT_DIR, SOURCES);
