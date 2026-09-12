@@ -88,8 +88,10 @@ static inline bool cl_arg(const char *flag, string_view_t *out_value, int *argc,
 
     *out_value = sv_cstr(**argv);
     cl_shift(argc, argv);
+
+    return true;
   }
-  return true;
+  return false;
 }
 
 #endif

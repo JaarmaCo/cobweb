@@ -97,11 +97,23 @@ int main(int argc, char **argv) {
   //
   bool run_tests = false;
 
+  int job_count = 1;
+
   while (argc > 0) {
+    string_view_t arg;
     if (cl_switch("--self", &argc, &argv)) {
       CMD_REBUILD_SELF();
     } else if (cl_switch("--test", &argc, &argv)) {
       run_tests = true;
+    } else if (cl_arg("-j", &arg, &argc, &argv)) {
+      unsigned int value = 1;
+      arg = sv_read_u(arg, &value, 10);
+      if (arg.count != 0) {
+        fprintf(stderr,
+                "Invalid argument for -j parameter, expected <number>\n");
+        exit(1);
+      }
+      job_count = (int)value;
     } else {
       cl_shift(&argc, &argv);
     }
@@ -141,8 +153,8 @@ int main(int argc, char **argv) {
   cmd_ensure_directory(OUT_DIR "concurrency/");
   cmd_ensure_directory(OUT_DIR TEST_DIR);
 
-  cmd_compile(&cc, SRC_DIR, OUT_DIR, SOURCES);
-  cmd_compile(&cc, TEST_DIR, OUT_DIR TEST_DIR, TESTS);
+  cmd_compile(&cc, job_count, SRC_DIR, OUT_DIR, SOURCES);
+  cmd_compile(&cc, job_count, TEST_DIR, OUT_DIR TEST_DIR, TESTS);
 
   if (run_tests) {
 

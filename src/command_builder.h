@@ -141,11 +141,12 @@ _Noreturn void cmd_rebuild_self(const char *file, const char *cc, ...);
  * files.
  *
  * @param cmd Command line to use.
+ * @param job_count Maximum number of concurrent compilations.
  * @param src_dir Directory where the source files are contained.
  * @param out_dir Directory to put the object files in.
  * @param va NULL-terminated variadic list of source file names (const char *).
  */
-void cmd_compile(command_builder_t *cmd, const char *src_dir,
+void cmd_compile(command_builder_t *cmd, int job_count, const char *src_dir,
                  const char *out_dir, ...);
 
 /**

@@ -31,18 +31,6 @@
 #define HEADER_ONLY
 #include "dynamic_array.h"
 
-#define TYPE_1 command_t *
-#define HEADER_ONLY
-#define PREFIX da_
-#define SUFFIX _cmd
-#include "dynamic_array.h"
-
-#define TYPE_1 int
-#define HEADER_ONLY
-#define PREFIX da_
-#define SUFFIX _i
-#include "dynamic_array.h"
-
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -50,6 +38,8 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#define CMD_CONCURRENCY_LIMIT 64
 
 struct command {
   pid_t pid;
@@ -123,52 +113,60 @@ void cmd_write_compilation_database(command_builder_t *cmd) {
   fclose(f);
 }
 
-void cmd_compile(command_builder_t *cmd, const char *src_dir,
+void cmd_compile(command_builder_t *cmd, int job_count, const char *src_dir,
                  const char *out_dir, ...) {
   allocator_t *old_scratch = scratch_allocator_pop();
   allocator_t *scratch = scratch_allocator(1024 * 1024);
   command_builder_t local = {
       .allocator = scratch,
   };
-  dynamic_array_cmd runs = {
-      .allocator = scratch,
-  };
-  dynamic_array_i exit_codes = {
-      .allocator = scratch,
-  };
+
+  if (job_count > CMD_CONCURRENCY_LIMIT) {
+    job_count = CMD_CONCURRENCY_LIMIT;
+  } else if (job_count < 1) {
+    job_count = 1;
+  }
+
   va_list va;
   va_start(va, out_dir);
   for (;;) {
 
-    const char *src = va_arg(va, const char *);
-    if (NULL == src) {
-      break;
+    size_t count = 0;
+    command_t *jobs[CMD_CONCURRENCY_LIMIT] = {0};
+    int exit_codes[CMD_CONCURRENCY_LIMIT] = {0};
+
+    for (int i = 0; i < job_count; ++i) {
+
+      const char *src = va_arg(va, const char *);
+      if (NULL == src) {
+        goto end;
+      }
+
+      cmd_clone(&local, cmd);
+
+      string_view_t filename = sv_cstr(src);
+      filename = c_file_pattern(filename);
+
+      env_define(local.env, SV("file"), filename);
+      env_define(local.env, SV("src_dir"), sv_cstr(src_dir));
+      env_define(local.env, SV("out_dir"), sv_cstr(out_dir));
+
+      cmd_expand_all(&local, "-c", "${src_dir}${file}.c", "-o",
+                     "${out_dir}${file}.o", NULL);
+
+      jobs[count++] = cmd_exec_async(&local);
     }
 
-    cmd_clone(&local, cmd);
-
-    string_view_t filename = sv_cstr(src);
-    filename = c_file_pattern(filename);
-
-    env_define(local.env, SV("file"), filename);
-    env_define(local.env, SV("src_dir"), sv_cstr(src_dir));
-    env_define(local.env, SV("out_dir"), sv_cstr(out_dir));
-
-    cmd_expand_all(&local, "-c", "${src_dir}${file}.c", "-o",
-                   "${out_dir}${file}.o", NULL);
-
-    da_append_cmd(&runs, cmd_exec_async(&local));
-    da_append_i(&exit_codes, 0);
+    cmd_wait_every(count, jobs, exit_codes);
+    for (size_t i = 0; i < count; ++i) {
+      if (exit_codes[i] != 0) {
+        fprintf(stderr, "%s exited with a nonzero exit code", cmd->items[0]);
+        exit(1);
+      }
+    }
   }
+end:
   va_end(va);
-
-  cmd_wait_every(runs.count, runs.items, exit_codes.items);
-  for (size_t i = 0; i < exit_codes.count; ++i) {
-    if (exit_codes.items[i] != 0) {
-      fprintf(stderr, "%s exited with a nonzero exit code", cmd->items[0]);
-      exit(1);
-    }
-  }
   scratch_allocator_restore(old_scratch);
 }
 
