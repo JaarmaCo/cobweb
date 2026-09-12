@@ -37,6 +37,13 @@
  *
  * This file also contains utilities for both executing and waiting for executed
  * commands. As well as a few utilities for executing compilation-like commands.
+ *
+ * The functions used here leak a lot of memory, which is partially intentional,
+ * as they are supposed to be used in conjunction with single-free allocator
+ * strategies (arenas, scratch buffers, etc.).
+ *
+ * However it may become an issue for future use cases, and is therefore subject
+ * for an eventual update.
  */
 
 #if !defined(COMMAND_BUILDER_H_)
