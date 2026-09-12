@@ -230,26 +230,16 @@ thread_t *thread_create(allocator_t *allocator, void (*run)(void *),
 
   atomic_init(&thread->iteration, 0);
 
-  if (pthread_mutex_init(&thread->lock, NULL) == -1) {
-    goto err;
-  }
+  pthread_mutex_init(&thread->lock, NULL);
+  pthread_cond_init(&thread->resume_condition, NULL);
+  pthread_cond_init(&thread->suspend_condition, NULL);
 
-  if (pthread_cond_init(&thread->resume_condition, NULL) == -1) {
-    goto err;
-  }
-
-  if (pthread_cond_init(&thread->suspend_condition, NULL) == -1) {
-    goto err;
-  }
-
-  if (pthread_create(&thread->impl, NULL, thread_run, thread) == -1) {
-    goto err;
+  if (pthread_create(&thread->impl, NULL, thread_run, thread) != 0) {
+    allocator_release(allocator, thread, sizeof(thread_t), _Alignof(thread_t));
+    return NULL;
   }
 
   return thread;
-err:
-  allocator_release(allocator, thread, sizeof(thread_t), _Alignof(thread_t));
-  return NULL;
 }
 
 void thread_start(thread_t *thread) {
@@ -291,7 +281,7 @@ void thread_await(thread_t *thread) {
 
 void thread_join(thread_t *thread) {
   assert(NULL != thread);
-  assert(NULL != this_thread_);
+  assert(thread != this_thread_);
   pthread_mutex_lock(&thread->lock);
   {
     thread->state = THREAD_STATE_DETACHED;

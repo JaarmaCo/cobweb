@@ -115,13 +115,24 @@ int main(void) {
     exit(1);
   }
 
+  thread_start(thread1);
+  thread_await(thread1);
+
+  if (count != 3) {
+    fprintf(stderr,
+            ERR("Attempted to run thread 1 again, however thread 1 did not "
+                "increment count: %d != 3"),
+            count);
+    exit(1);
+  }
+
   thread_start(thread2);
   thread_join(thread2);
 
-  if (count != 4) {
+  if (count != 5) {
     fprintf(stderr,
             ERR("Attempted to run and join with thread 2, however thread 2 did "
-                "not increment count for all of init, cleanup: %d != 4"),
+                "not increment count for all of init, cleanup: %d != 5"),
             count);
     exit(1);
   }
@@ -135,10 +146,10 @@ int main(void) {
 
   thread_join(thread1);
 
-  if (count != 5) {
+  if (count != 6) {
     fprintf(stderr,
             ERR("Attempted to join with thread 1, however thread 1 did not "
-                "increment count once: %d != 5"),
+                "increment count once: %d != 6"),
             count);
     exit(1);
   }
