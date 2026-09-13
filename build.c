@@ -89,6 +89,7 @@
   "promise.c", \
   "mutex.c", \
   "condition_variable.c", \
+  "semaphore.c", \
   NULL
 
 // clang-format on
