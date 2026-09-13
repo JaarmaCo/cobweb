@@ -186,13 +186,18 @@ void condition_variable_wait(condition_variable_t *condition_variable,
                              mutex_t *mutex) {
   assert(NULL != condition_variable);
   assert(NULL != mutex);
-  assert(mutex->holder == thread_get_this());
+
+  thread_t *self = thread_get_this();
+  assert(mutex->holder == self);
 
   int result = pthread_cond_wait(&condition_variable->impl, &mutex->impl);
   if (result != 0) {
     perror("pthread_cond_wait");
     abort();
   }
+
+  mutex->holder = self;
+  mutex->state = MUTEX_STATE_LOCKED;
 }
 
 void condition_variable_signal(condition_variable_t *condition_variable) {

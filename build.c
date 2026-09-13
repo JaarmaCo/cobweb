@@ -88,6 +88,7 @@
   "thread.c", \
   "promise.c", \
   "mutex.c", \
+  "condition_variable.c", \
   NULL
 
 // clang-format on
