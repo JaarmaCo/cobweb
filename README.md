@@ -43,6 +43,7 @@ recipe also supports the following flags:
 
 - `--self` recompiles the build recipe
 - `--test` runs tests after performing the compilation
+- `-j <number>` specify the number of parallel compilation jobs
 
 
 
