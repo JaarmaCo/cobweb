@@ -280,7 +280,17 @@ string_view_t sv_read_ld(string_view_t sv, long double *out, int base) {
     intmax_t power;
     sv = parse_signed_sized_integer(sv, &power, 10, 4);
 
-    result *= powl(10, power);
+    if (power < 0) {
+      while (power != 0) {
+        result /= 10;
+        ++power;
+      }
+    } else if (power > 0) {
+      while (power != 0) {
+        result *= 10;
+        --power;
+      }
+    }
 
   } else if (base > 10 && *sv.items == 'p') {
 
@@ -294,7 +304,17 @@ string_view_t sv_read_ld(string_view_t sv, long double *out, int base) {
     intmax_t power;
     sv = parse_signed_sized_integer(sv, &power, 10, 4);
 
-    result *= powl(2, power);
+    if (power < 0) {
+      while (power != 0) {
+        result /= 2;
+        ++power;
+      }
+    } else if (power > 0) {
+      while (power != 0) {
+        result *= 2;
+        --power;
+      }
+    }
   }
 
   *out = result;

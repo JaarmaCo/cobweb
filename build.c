@@ -50,7 +50,6 @@
 // LDFLAGS, CFLAGS : GNU Makefile inspired macro definitions. These
 //                   are also automatically used by CMD_REBUILD_SELF.
 #define LDFLAGS \
-  "-lm",        \
   NULL
 #define CFLAGS  \
   "-Wall",      \

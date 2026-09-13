@@ -26,7 +26,6 @@ The `bootstrap-build` file assumes your system has a default C compiler installe
 build recipe using the following compiler flags:
 
 - `-DBOOTSTRAP_BUILD=1`
-- `-lm`
 - `-Isrc`
 - `-o build`
 
