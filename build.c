@@ -90,6 +90,7 @@
   "mutex.c", \
   "condition_variable.c", \
   "semaphore.c", \
+  "fence.c", \
   NULL
 
 // clang-format on
