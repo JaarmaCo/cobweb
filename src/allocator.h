@@ -165,6 +165,12 @@ struct debug_allocator {
 extern allocator_t *malloc_allocator;
 
 /**
+ * Same as malloc_allocator, but never returns NULL (calls exit() if the
+ * allocation failed).
+ */
+extern allocator_t *xmalloc_allocator;
+
+/**
  * Creates a new arena allocator.
  *
  * This function may call exit(int) if the buffer parameter was NULL, and

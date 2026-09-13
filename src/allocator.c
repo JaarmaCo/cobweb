@@ -25,6 +25,7 @@
 #endif
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 static void *malloc_allocate(allocator_t *allocator,
@@ -44,6 +45,35 @@ static void *malloc_allocate(allocator_t *allocator,
 
 allocator_t *malloc_allocator = &(allocator_t){
     .allocate = malloc_allocate,
+};
+
+static void *xmalloc_allocate(allocator_t *allocator,
+                              const allocation_t *allocation) {
+  (void)allocator;
+  assert(allocation->new_size == 0 ||
+         allocation->new_size > allocation->old_size);
+  if (allocation->new_size == 0) {
+    free(allocation->memory);
+    return NULL;
+  } else if (allocation->old_size > 0) {
+    void *mem = realloc(allocation->memory, allocation->new_size);
+    if (NULL == mem) {
+      perror("realloc");
+      exit(1);
+    }
+    return mem;
+  } else {
+    void *mem = malloc(allocation->new_size);
+    if (NULL == mem) {
+      perror("malloc");
+      exit(1);
+    }
+    return mem;
+  }
+}
+
+allocator_t *xmalloc_allocator = &(allocator_t){
+    .allocate = xmalloc_allocate,
 };
 
 static void *debug_allocate(allocator_t *allocator,
