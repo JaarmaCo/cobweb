@@ -77,6 +77,7 @@
   "sv_read.c", \
   "concurrency/thread.c", \
   "concurrency/promise.c", \
+  "concurrency/sync.c", \
   NULL
 
 #define TESTS \
@@ -85,7 +86,8 @@
   "json.c", \
   "string_builder.c", \
   "thread.c", \
-  "promise.c",\
+  "promise.c", \
+  "mutex.c", \
   NULL
 
 // clang-format on
