@@ -159,6 +159,9 @@ thread_t *thread_create(allocator_t *allocator, void (*run)(void *), void *arg);
  * thread_start should not be called on a thread handle that was invalidated
  * by a call to thread_join or thread_detach.
  *
+ * If the thread was instead suspended using thread_suspend, the thread will
+ * be continued from the suspension point rather than restarted.
+ *
  * @param thread Thread to start.
  */
 void thread_start(thread_t *thread);
