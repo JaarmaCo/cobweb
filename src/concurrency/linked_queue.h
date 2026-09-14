@@ -23,6 +23,8 @@
 /**
  * @file concurrency/linked_queue.h
  *
+ * @warning This datastructure has unresolved double-free issues
+ *
  * This header template file contains a lock-free concurrent linked queue
  * implementation.
  *
