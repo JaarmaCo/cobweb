@@ -91,7 +91,8 @@
   "condition_variable.c", \
   "semaphore.c", \
   "fence.c", \
-  "concurrent_linked_queue.c",\
+  "thread_suspend.c", \
+  /*"concurrent_linked_queue.c",*/\
   NULL
 
 // clang-format on
