@@ -149,8 +149,9 @@ int main(void) {
         fprintf(
             stderr,
             ERR("Value %d had more occurences than the number of producers. "
-                "This indicate two consumers dequeued the same value."),
-            value);
+                "This indicate two consumers dequeued the same value. Number "
+                "of values: %d"),
+            value, value_counts[value]);
         exit(1);
       }
     }

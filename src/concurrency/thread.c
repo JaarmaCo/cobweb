@@ -126,7 +126,7 @@ void thread_at_init(thread_t *thread, void (*init)(void *)) {
   pthread_mutex_unlock(&thread->lock);
 }
 
-static thread_state_t thread_suspend(thread_t *thread) {
+static thread_state_t thread_run_suspend(thread_t *thread) {
   thread_state_t successor_state = THREAD_STATE_SUSPENDED;
   pthread_mutex_lock(&thread->lock);
   {
@@ -178,7 +178,7 @@ static void thread_destroy(thread_t *thread) {
 static void *thread_run(void *arg) {
 
   thread_t *thread = arg;
-  thread_state_t next_state = thread_suspend(thread);
+  thread_state_t next_state = thread_run_suspend(thread);
 
   void (*at_init)(void *);
   pthread_mutex_lock(&thread->lock);
@@ -195,7 +195,7 @@ static void *thread_run(void *arg) {
   for (;;) {
     switch (next_state) {
     case THREAD_STATE_SUSPENDED:
-      next_state = thread_suspend(thread);
+      next_state = thread_run_suspend(thread);
       break;
     case THREAD_STATE_RUNNING:
       next_state = thread_execute(thread);
@@ -296,4 +296,19 @@ void thread_join(thread_t *thread) {
 void thread_exit(void) {
   assert(NULL != this_thread_);
   longjmp(this_thread_->unwind_buffer, 1);
+}
+
+void thread_suspend(void) {
+  thread_t *thread = this_thread_;
+  assert(thread != NULL);
+
+  pthread_mutex_lock(&thread->lock);
+  {
+    thread->state = THREAD_STATE_SUSPENDED;
+    while (thread->state == THREAD_STATE_SUSPENDED) {
+      pthread_cond_broadcast(&thread->suspend_condition);
+      pthread_cond_wait(&thread->resume_condition, &thread->lock);
+    }
+  }
+  pthread_mutex_unlock(&thread->lock);
 }

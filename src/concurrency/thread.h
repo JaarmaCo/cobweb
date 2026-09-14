@@ -206,6 +206,11 @@ void thread_join(thread_t *thread);
  */
 _Noreturn void thread_exit(void);
 
+/**
+ * Suspend thread execution until a new thread_start request is received.
+ */
+void thread_suspend(void);
+
 #endif
 
 #if defined(UNITY_BUILD)
