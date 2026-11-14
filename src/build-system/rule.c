@@ -468,7 +468,7 @@ bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *co
     }
     
     if (context->dependency_depth >= RULE_MAX_DEPENDENCY_DEPTH) {
-        fprintf(context->status, "Maximum dependency depth reach. Possibly a cycle.\n");
+        fprintf(context->status, "Maximum dependency depth reached. Possibly a cycle.\n");
         return false;
     }
 
