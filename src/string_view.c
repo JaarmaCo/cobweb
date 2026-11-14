@@ -24,6 +24,8 @@
 #include "string_view.h"
 #endif
 
+#include "allocator.h"
+
 #include <assert.h>
 #include <stdbool.h>
 #include <string.h>
@@ -48,6 +50,21 @@ string_view_t sv_substr(string_view_t sv, size_t index, size_t count) {
       .items = sv.items + index,
       .count = count,
   };
+}
+
+const char *sv_to_cstr(string_view_t sv, allocator_t *allocator) {
+    char *buffer = (char *)allocator_new(allocator, sv.count + 1, 1);
+    if (!buffer) {
+        return NULL;
+    }
+    memcpy(buffer, sv.items, sv.count);
+    buffer[sv.count] = 0;
+    return buffer;
+}
+
+const char *sv_to_temp_cstr(string_view_t sv) {
+    allocator_t *allocator = scratch_allocator(sv.count + 1);
+    return allocator ? sv_to_cstr(sv, allocator) : NULL;
 }
 
 string_view_t sv_group(string_view_t *sv, string_view_t left,

@@ -35,6 +35,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "allocator.h"
+
 /**
  * Constructs a string view from a string literal.
  */
@@ -164,6 +166,16 @@ string_view_t sv_trim_right(string_view_t sv, const char *trim_chars);
  * @param trim_chars NUL-terminated string containing the characters to remove.
  */
 string_view_t sv_trim(string_view_t sv, const char *trim_chars);
+
+/**
+ * Duplicates the string view to a C-string.
+ */
+const char *sv_to_cstr(string_view_t sv, allocator_t *allocator);
+
+/**
+ * Duplicates the string view to a C-string; uses the scratch allocator.
+ */
+const char *sv_to_temp_cstr(string_view_t sv);
 
 /**
  * Finds the first occurence of the specified character in the string-view,

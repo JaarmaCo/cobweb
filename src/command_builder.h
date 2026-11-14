@@ -196,6 +196,16 @@ void cmd_ensure_directory(const char *dirname);
 bool cmd_find_executable(command_builder_t *cmd, const char *name);
 
 /**
+ * Check if a file exists.
+ */
+bool cmd_file_exists(const char *filename);
+
+/**
+ * Test if a file is older than another file.
+ */
+double cmd_file_age_difference(const char *file, const char *test);
+
+/**
  * Append a nul-terminated string to the command list.
  */
 void cmd_append(command_builder_t *cmd, const char *entry);
@@ -271,6 +281,13 @@ int cmd_exec_sync(command_builder_t *cmd);
  *         error occured.
  */
 int cmd_exec_sync_maybe(command_builder_t *cmd);
+
+/**
+ * Run a function call asynchronously in a new process.
+ *
+ * @return A handle to the spawned process.
+ */
+command_t *cmd_async(void(*runner)(void *), void *arg);
 
 /**
  * Executes the constructed command line by spawning a new process. This

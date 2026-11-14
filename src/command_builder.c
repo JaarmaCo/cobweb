@@ -31,6 +31,7 @@
 #define HEADER_ONLY
 #include "dynamic_array.h"
 
+#include <time.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -367,6 +368,22 @@ void cmd_clone(command_builder_t *cmd, const command_builder_t *source) {
   }
 }
 
+bool cmd_file_exists(const char *name) {
+    return access(name, F_OK) == 0;
+}
+
+double cmd_file_age_difference(const char *file, const char *test) {
+
+    struct stat st1 = {0}, st2 = {0};
+    if (stat(file, &st1) != 0) {
+        return stat(test, &st2) == 0 ? -1 : 0;
+    }
+    if (stat(test, &st2) != 0) {
+        return 0;
+    }
+    return difftime(st1.st_mtime, st2.st_mtime);
+}
+
 bool cmd_find_executable(command_builder_t *cmd, const char *name) {
 
   struct stat st;
@@ -407,30 +424,18 @@ bool cmd_find_executable(command_builder_t *cmd, const char *name) {
   return false;
 }
 
-command_t *cmd_exec_(command_builder_t *cmd, int *out_error) {
-
-  if (cmd->echo_channel) {
-    for (size_t i = 0; i < cmd->count; ++i) {
-      if (i != 0) {
-        fprintf(cmd->echo_channel, " ");
-        fprintf(cmd->echo_channel, "'%s'", cmd->items[i]);
-      } else {
-        fprintf(cmd->echo_channel, "%s", cmd->items[i]);
-      }
-    }
-    fputc('\n', cmd->echo_channel);
-  }
-
+command_t *cmd_async_(void(*runner)(void *), void *arg, allocator_t *allocator, int *out_error) {
   command_t *result =
-      allocator_new(cmd->allocator, sizeof(command_t), _Alignof(command_t));
+      allocator_new(allocator, sizeof(command_t), _Alignof(command_t));
   if (NULL == result) {
     *out_error = errno;
     return NULL;
   }
+  memset(result, 0, sizeof *result);
 
   int fds[2];
   if (pipe(fds) == -1) {
-    allocator_release(cmd->allocator, result, sizeof(command_t),
+    allocator_release(allocator, result, sizeof(command_t),
                       _Alignof(command_t));
     *out_error = errno;
     return NULL;
@@ -445,7 +450,7 @@ command_t *cmd_exec_(command_builder_t *cmd, int *out_error) {
     close(fds[0]);
     close(fds[1]);
 
-    allocator_release(cmd->allocator, result, sizeof(command_t),
+    allocator_release(allocator, result, sizeof(command_t),
                       _Alignof(command_t));
     return NULL;
 
@@ -454,7 +459,7 @@ command_t *cmd_exec_(command_builder_t *cmd, int *out_error) {
     close(fds[0]);
     fcntl(fds[1], F_SETFD, FD_CLOEXEC);
 
-    execv(cmd->items[0], cmd->items);
+    runner(arg);
 
     int err = errno;
     write(fds[1], &err, sizeof(int));
@@ -472,20 +477,54 @@ command_t *cmd_exec_(command_builder_t *cmd, int *out_error) {
 
   if (nr == -1) {
     *out_error = err;
-    allocator_release(cmd->allocator, result, sizeof(command_t),
+    allocator_release(allocator, result, sizeof(command_t),
                       _Alignof(command_t));
     return NULL;
   } else if (nr != sizeof(int) && nr != 0) {
     *out_error = EBADMSG;
-    allocator_release(cmd->allocator, result, sizeof(command_t),
+    allocator_release(allocator, result, sizeof(command_t),
                       _Alignof(command_t));
     return NULL;
   } else if (nr == sizeof(int)) {
-    allocator_release(cmd->allocator, result, sizeof(command_t),
+    allocator_release(allocator, result, sizeof(command_t),
                       _Alignof(command_t));
     return NULL;
   }
   result->pid = pid;
+  return result;
+
+} 
+
+command_t *cmd_async(void(*runner)(void *), void *arg) {
+  int err;
+  return cmd_async_(runner, arg, malloc_allocator, &err);
+}
+
+void run_exec_(void *arg) {
+  command_builder_t *cmd = (command_builder_t *)arg;
+  execv(cmd->items[0], cmd->items);
+}
+
+command_t *cmd_exec_(command_builder_t *cmd, int *out_error) {
+
+  if (cmd->echo_channel) {
+    for (size_t i = 0; i < cmd->count; ++i) {
+      if (i != 0) {
+        fprintf(cmd->echo_channel, " ");
+        fprintf(cmd->echo_channel, "'%s'", cmd->items[i]);
+      } else {
+        fprintf(cmd->echo_channel, "%s", cmd->items[i]);
+      }
+    }
+    fputc('\n', cmd->echo_channel);
+  }
+
+  command_t *result = cmd_async_(run_exec_, cmd, cmd->allocator, out_error);
+
+  if (!result) {
+    return NULL;
+  }
+
   result->owner = cmd;
   return result;
 }
