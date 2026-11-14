@@ -369,7 +369,7 @@ void cmd_clone(command_builder_t *cmd, const command_builder_t *source) {
 }
 
 bool cmd_file_exists(const char *name) {
-    return access(name, F_OK);
+    return access(name, F_OK) == 0;
 }
 
 double cmd_file_age_difference(const char *file, const char *test) {

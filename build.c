@@ -79,6 +79,7 @@
   "concurrency/promise.c", \
   "concurrency/sync.c", \
   "build-system/rule.c",\
+  "build-system/compilation.c",\
   NULL
 
 #define TESTS \

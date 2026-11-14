@@ -37,6 +37,10 @@ allocator_t *scratch_allocator(size_t buffer_size) {
     return NULL;
   }
 
+  if (buffer_size < 1024) {
+    buffer_size = 1024;
+  }
+
   void *new_arena = realloc(scratch_arena, buffer_size);
   if (NULL == new_arena) {
     perror("realloc");

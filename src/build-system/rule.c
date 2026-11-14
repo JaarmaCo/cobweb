@@ -1,7 +1,10 @@
 #include <limits.h>
 
 #include "rule.h"
+#include "allocator.h"
+#include "command_builder.h"
 #include "json.h"
+#include "string_builder.h"
 
 static bool rule_input_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *allocator) {
     
@@ -496,16 +499,38 @@ bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *co
     }
 
     for (size_t i = 0; i < rule->input.count; ++i) {
-        if (!cmd_file_exists(rule->input.items[i].items)) {
-            fprintf(context->status,
-                    "Missing input file %.*s required by %.*s.\n",
-                    (int)rule->input.items[i].count,
-                    rule->input.items[i].items,
-                    (int)rule->output.count,
-                    rule->output.items);
-            goto err;
+
+        string_builder_t input = rule->input.items[i];
+
+        if (cmd_file_exists(input.items)) {
+            continue;
         }
+        
+        string_builder_t output_rel_input = {.allocator = context->command_builder.allocator};
+        sb_append_sv(&output_rel_input, context->output_directory);
+        if (!sv_ends_with_char(sb_view(&output_rel_input), '/')) {
+            sb_append_char(&output_rel_input, '/');
+        }
+        sb_append_sv(&output_rel_input, sb_view(&input));
+
+        if (cmd_file_exists(output_rel_input.items)) {
+            sb_destroy(&input);
+            rule->input.items[i] = output_rel_input;
+            continue;
+        }
+
+        sb_destroy(&output_rel_input);
+
+        fprintf(context->status,
+                "Missing input file %.*s required by %.*s.\n",
+                (int)rule->input.items[i].count,
+                rule->input.items[i].items,
+                (int)rule->output.count,
+                rule->output.items);
+        goto err;
     }
+
+    cmd_ensure_directory(sv_to_temp_cstr(context->output_directory));
 
     {
         command_t *command = run_rule_only(rule, context);

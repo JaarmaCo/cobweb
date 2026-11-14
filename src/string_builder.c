@@ -69,6 +69,7 @@ char *sb_append_sv(string_builder_t *sb, string_view_t sv) {
   }
   strncpy(sb->items + sb->count, sv.items, sv.count);
   sb->count += sv.count;
+  sb->items[sb->count] = 0;
   return sb->items;
 }
 

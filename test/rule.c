@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include <build-system/rule.h>
+#include <build-system/compilation.h>
 
 #define ESC "\x1B"
 #define BOLD ESC "[1m"
@@ -135,6 +136,54 @@ void parsing_rules(allocator_t *allocator) {
     rule_list_destroy(&rules);
 }
 
+void building(allocator_t *allocator) {
+    fprintf(stderr, INFO("--- Test building"));
+
+    rule_list_t rules = {0};
+    json_pool_t pool = {.allocator = allocator};
+
+    FILE *f = fopen("./test/assets/recipe-list.json", "r");
+    if (!f) {
+        fprintf(stderr, ERR("Failed to open test asset file."));
+        exit(1);
+    }
+
+    json_node_t json = json_load(&pool, f);
+    fclose(f);
+
+    if (!rule_list_from_json(&rules, json, stdout, allocator)) {
+        fprintf(stderr, ERR("Trusted test asset failed to parse."));
+        exit(1);
+    }
+    
+    allocator_t *auto_free_context = auto_free_allocator(allocator);
+    env_t env = {.allocator = auto_free_context};
+
+    env_inherit_environ(&env);
+
+    build_context_t context = {
+        .env = &env,
+        .status = stdout,
+        .dependency_depth = 0,
+        .concurreny = 0,
+        .output_directory = SV("test-out"),
+        .compiler = compiler_gcc(),
+        .command_builder = {
+            .allocator = auto_free_context,
+            .env = &env,
+        },
+    };
+
+    if (!run_rule(1, &rules, &context)) {
+        fprintf(stderr, ERR("Failed to run the rule."));
+        exit(1);
+    }
+
+    auto_free_destroy(auto_free_context);
+    json_destroy_pool(&pool);
+    rule_list_destroy(&rules);
+}
+
 void run_test(void(*test)(allocator_t *)) {
     
     size_t allocated_size = 0;
@@ -151,6 +200,7 @@ void run_test(void(*test)(allocator_t *)) {
 
 int main(void) {
     run_test(parsing_rules);
+    run_test(building);
     return 0;
 }
 
