@@ -20,6 +20,13 @@ typedef struct flags_list flags_list_t;
 typedef struct compiler compiler_t;
 typedef struct build_context build_context_t;
 
+typedef enum rule_type {
+    RULE_EXECUTABLE,
+    RULE_STATIC_LIBRARY,
+    RULE_DYNAMIC_LIBRARY,
+    RULE_OBJECT,
+} rule_type_t;
+
 struct file_list {
     size_t count;
     size_t capacity;
@@ -65,6 +72,7 @@ struct flags_list {
 };
 
 struct rule {
+    rule_type_t type;
     file_list_t input;
     string_builder_t output;
     flags_list_t flags;

@@ -1,6 +1,7 @@
 #include <limits.h>
 
 #include "rule.h"
+#include "json.h"
 
 static bool rule_input_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *allocator) {
     
@@ -14,7 +15,7 @@ static bool rule_input_from_json(rule_t *rule, json_node_t node, FILE *status, a
 
     json_array_t array;
     if (!json_get(node, JSON_ARRAY, &array)) {
-        fputs("\"input\" has to be a string, or an array of strings.", status);
+        fputs("\"input\" has to be a string, or an array of strings.\n", status);
         return false;
     }
 
@@ -39,7 +40,7 @@ static bool rule_output_from_json(rule_t *rule, json_node_t node, FILE *status) 
         return true;
     }
 
-    fputs("Expected \"output\" to be a string.", status);
+    fputs("Expected \"output\" to be a string.\n", status);
     return false;
 }
 
@@ -48,7 +49,7 @@ static bool rule_flags_from_json(rule_t *rule, json_node_t node, FILE *status, a
     json_array_t array;
     json_string_t contents;
     if (!json_get(node, JSON_ARRAY, &array)) {
-        fputs("\"flags\" has to be an array of strings.", status);
+        fputs("\"flags\" has to be an array of strings.\n", status);
         return false;
     }
 
@@ -70,7 +71,7 @@ static bool rule_depends_from_json(rule_t *rule, json_node_t node, FILE *status)
     json_array_t array;
     json_number_t contents;
     if (!json_get(node, JSON_ARRAY, &array)) {
-        fputs("\"depends\" has to be an array of integers.", status);
+        fputs("\"depends\" has to be an array of integers.\n", status);
         return false;
     }
 
@@ -110,7 +111,7 @@ static bool rule_depends_from_json(rule_t *rule, json_node_t node, FILE *status)
 static bool rule_linker_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *allocator) {
     
     if (node.type != JSON_OBJECT) {
-        fputs("Expected property \"linker\" to be an object.", status);
+        fputs("Expected property \"linker\" to be an object.\n", status);
         return false;
     }
 
@@ -133,7 +134,7 @@ static bool rule_linker_from_json(rule_t *rule, json_node_t node, FILE *status, 
     child = json_find(node, SV("directories"));
     if (child) {
         if (!json_get(*child, JSON_ARRAY, &array)) {
-            fputs("Expected property \"directories\" of object \"linker\" to be an array of strings.", status);
+            fputs("Expected property \"directories\" of object \"linker\" to be an array of strings.\n", status);
             return false;
         }
 
@@ -152,7 +153,7 @@ static bool rule_linker_from_json(rule_t *rule, json_node_t node, FILE *status, 
     child = json_find(node, SV("libraries"));
     if (child) {
         if (!json_get(*child, JSON_ARRAY, &array)) {
-            fputs("Expected property \"libraries\" of object \"linker\" to be an array of strings.", status);
+            fputs("Expected property \"libraries\" of object \"linker\" to be an array of strings.\n", status);
             return false;
         }
 
@@ -174,7 +175,7 @@ static bool rule_linker_from_json(rule_t *rule, json_node_t node, FILE *status, 
 static bool rule_preprocessor_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *allocator) {
     
     if (node.type != JSON_OBJECT) {
-        fputs("Expected property \"preprocessor\" to be an object.", status);
+        fputs("Expected property \"preprocessor\" to be an object.\n", status);
         return false;
     }
 
@@ -185,7 +186,7 @@ static bool rule_preprocessor_from_json(rule_t *rule, json_node_t node, FILE *st
     child = json_find(node, SV("includes"));
     if (child) {
         if (!json_get(*child, JSON_ARRAY, &array)) {
-            fputs("Expected property \"includes\" of object \"preprocessor\" to be an array of strings.", status);
+            fputs("Expected property \"includes\" of object \"preprocessor\" to be an array of strings.\n", status);
             return false;
         }
 
@@ -239,7 +240,7 @@ static bool rule_preprocessor_from_json(rule_t *rule, json_node_t node, FILE *st
 bool rule_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *allocator) {
     
     if (node.type != JSON_OBJECT) {
-        fputs("Expected the root element to be an object.", status);
+        fputs("Expected the root element to be an object.\n", status);
         return false;
     }
 
@@ -259,7 +260,7 @@ bool rule_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *a
 
     child = json_find(node, SV("input"));
     if (!child) {
-        fputs("Missing required \"input\" property.", status);
+        fputs("Missing required \"input\" property.\n", status);
         return false;
     }
     if (!rule_input_from_json(rule, *child, status, allocator)) {
@@ -272,7 +273,34 @@ bool rule_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *a
             return false;
         }
     } else {
-        fputs("Missing required property \"output\".\n", status);
+        fputs("Missing required property \"output\".\n\n", status);
+        return false;
+    }
+
+    child = json_find(node, SV("type"));
+    if (child) {
+        json_string_t string;
+        if (!json_get(*child, JSON_STRING, &string)) {
+            fputs("Expected property \"type\" to be a string.\n\n", status);
+            return false;
+        }
+        
+        if (sv_equals(sb_view(&string), SV("object"))) {
+            rule->type = RULE_OBJECT;
+        } else if (sv_equals(sb_view(&string), SV("executable"))) {
+            rule->type = RULE_EXECUTABLE;
+        } else if (sv_equals(sb_view(&string), SV("static-library"))) {
+            rule->type = RULE_STATIC_LIBRARY;
+        } else if (sv_equals(sb_view(&string), SV("dynamic-library"))) {
+            rule->type = RULE_DYNAMIC_LIBRARY;
+        } else {
+            fputs("Expected property \"type\" to be one of [ \"object\", "
+                    "\"executable\", \"static-library\", \"dynamic-library\" ].\n", status);
+            return false;
+        }
+
+    } else {
+        fputs("Missing required property \"type\".\n\n", status);
         return false;
     }
 

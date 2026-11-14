@@ -93,6 +93,7 @@
   "semaphore.c", \
   "fence.c", \
   "thread_suspend.c", \
+  "rule.c", \
   /*"concurrent_linked_queue.c",*/\
   NULL
 
