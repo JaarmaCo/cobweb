@@ -249,6 +249,8 @@ bool rule_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *a
 
     json_node_t *child;
     memset(rule, 0, sizeof *rule);
+    
+    allocator = auto_free_allocator(allocator);
 
     rule->allocator = allocator;
     rule->input.allocator = allocator;
@@ -363,15 +365,8 @@ void rule_destroy(rule_t *rule) {
         return;
     }
 
-    file_list_destroy(&rule->input);
-    sb_destroy(&rule->output);
-    flags_destroy(&rule->flags);
-    dep_list_destroy(&rule->depends);
-    sb_destroy(&rule->linker.rpath);
-    file_list_destroy(&rule->linker.directories);
-    file_list_destroy(&rule->linker.libraries);
-    file_list_destroy(&rule->preprocessor.includes);
-    define_list_destroy(&rule->preprocessor.definitions);
+    auto_free_destroy(rule->allocator);
+    memset(rule, 0, sizeof *rule);
 }
 
 command_t *run_rule_only(const rule_t *rule, build_context_t *context) {
