@@ -474,9 +474,11 @@ bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *co
 
     rule_t *rule = &rules->items[number - 1];
     if (!rule_needs_rebuild(rule, context)) {
-        fprintf(context->status, "%.*s is up to date.\n",
-                (int)rule->output.count,
-                rule->output.items);
+        if (rule->type != RULE_OBJECT) {
+            fprintf(context->status, "%.*s is up to date.\n",
+                    (int)rule->output.count,
+                    rule->output.items);
+        }
         return true;
     }
 
