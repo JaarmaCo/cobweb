@@ -8,6 +8,7 @@ static bool rule_input_from_json(rule_t *rule, json_node_t node, FILE *status, a
     if (json_get(node, JSON_STRING, &contents)) {
         string_builder_t s = {.allocator = allocator};
         sb_append_sv(&s, sb_view(&contents));
+        file_list_append(&rule->input, s);
         return true;
     }
 
@@ -30,32 +31,16 @@ static bool rule_input_from_json(rule_t *rule, json_node_t node, FILE *status, a
     return true;
 }
 
-static bool rule_output_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *allocator) {
+static bool rule_output_from_json(rule_t *rule, json_node_t node, FILE *status) {
     
     json_string_t contents;
     if (json_get(node, JSON_STRING, &contents)) {
-        string_builder_t s = {.allocator = allocator};
-        sb_append_sv(&s, sb_view(&contents));
+        sb_append_sv(&rule->output, sb_view(&contents)); 
         return true;
     }
 
-    json_array_t array;
-    if (!json_get(node, JSON_ARRAY, &array)) {
-        fputs("\"output\" has to be a string, or an array of strings.", status);
-        return false;
-    }
-
-    for (size_t i = 0; i < array.count; ++i) {
-        json_node_t child = array.items[i];
-        if (!json_get(child, JSON_STRING, &contents)) {
-            fprintf(status, "Invalid value at element %zu in \"output\", expected a string.\n", i);
-            return false;
-        }
-        string_builder_t sb = {.allocator = allocator};
-        sb_append_sv(&sb, sb_view(&contents));
-        file_list_append(&rule->output, sb);
-    }
-    return true;
+    fputs("Expected \"output\" to be a string.", status);
+    return false;
 }
 
 static bool rule_flags_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *allocator) {
@@ -80,7 +65,7 @@ static bool rule_flags_from_json(rule_t *rule, json_node_t node, FILE *status, a
     return true;
 }
 
-static bool rule_depends_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *allocator) {
+static bool rule_depends_from_json(rule_t *rule, json_node_t node, FILE *status) {
     
     json_array_t array;
     json_number_t contents;
@@ -283,9 +268,12 @@ bool rule_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *a
 
     child = json_find(node, SV("output"));
     if (child) {
-        if (!rule_output_from_json(rule, *child, status, allocator)) {
+        if (!rule_output_from_json(rule, *child, status)) {
             return false;
         }
+    } else {
+        fputs("Missing required property \"output\".\n", status);
+        return false;
     }
 
     child = json_find(node, SV("flags"));
@@ -297,7 +285,7 @@ bool rule_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *a
 
     child = json_find(node, SV("depends"));
     if (child) {
-        if (!rule_depends_from_json(rule, *child, status, allocator)) {
+        if (!rule_depends_from_json(rule, *child, status)) {
             return false;
         }
     }
@@ -345,7 +333,7 @@ void rule_destroy(rule_t *rule) {
     }
 
     file_list_destroy(&rule->input);
-    file_list_destroy(&rule->output);
+    sb_destroy(&rule->output);
     flags_destroy(&rule->flags);
     dep_list_destroy(&rule->depends);
     sb_destroy(&rule->linker.rpath);
@@ -359,17 +347,159 @@ command_t *run_rule_only(const rule_t *rule, build_context_t *context) {
     return context->compiler.callback(rule, context, context->compiler.arg);
 }
 
-command_t *run_rule(unsigned int number, const rule_list_t *rules, build_context_t *context) {
+struct rule_async_runner {
+    unsigned int number;
+    rule_list_t rules;
+    build_context_t context;
+};
+
+static void run_rule_async_runner(void *arg) {
+    struct rule_async_runner *runner = (struct rule_async_runner *)arg;
+    if (run_rule(runner->number, &runner->rules, &runner->context)) {
+        exit(0);
+    }
+    exit(1);
+}
+
+command_t *run_rule_async(unsigned int number, const rule_list_t *rules, build_context_t *context) {
+    struct rule_async_runner runner = {
+        .number = number,
+        .rules = *rules,
+        .context = *context,
+    };
+    return cmd_async(run_rule_async_runner, &runner);
+}
+
+static bool rule_needs_rebuild(const rule_t *rule, build_context_t *context) {
+    
+    bool result = false;
+    string_view_t output_directory = context->output_directory;
+    string_builder_t output = {.allocator = context->command_builder.allocator};
+
+    sb_append_sv(&output, output_directory);
+    if (!sv_ends_with_char(sb_view(&output), '/')) {
+        sb_append_char(&output, '/');
+    }
+
+    sb_append_sv(&output, sb_view(&rule->output));
+
+    if (!cmd_file_exists(output.items)) {
+        result = true;
+        goto defer;
+    }
+
+    for (size_t i = 0; i < rule->input.count; ++i) {
+        double diff_time = cmd_file_age_difference(output.items, rule->input.items[i].items);
+        if (diff_time < 0) {
+            result = true;
+            goto defer;
+        }
+    }
+
+defer:
+    sb_destroy(&output);
+    return result;
+}
+
+static bool run_dependencies_concurrently(const rule_t *rule, const rule_list_t *rules, build_context_t *context) {
+    unsigned int dep = 0;
+    int concurrency = context->concurreny == 0 ? 1 : context->concurreny;
+    while (dep < rule->depends.count) {
+
+        command_t *running[64] = {0};
+        int exit_codes[64] = {0};
+
+        for (int i = 0; i < concurrency; ++i) {
+            command_t *command = run_rule_async(rule->depends.items[i], rules, context);
+            if (!command) {
+                cmd_wait_every((size_t)i, running, exit_codes);
+                return false;
+            }
+            running[i] = command;
+            ++dep;
+        }
+
+        cmd_wait_every((size_t)concurrency, running, exit_codes);
+    
+        for (int i = 0; i < concurrency; ++i) {
+            if (exit_codes[i] != 0) {
+                fprintf(context->status,
+                        "Subprocess of rule dependency exited with a nonzero exit code.\n");
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *context) {
     
     if (number == 0 || number > rules->count) {
         fprintf(context->status, "Rule number %u is outside the valid range [1, %u]\n",
                 number, (unsigned int)rules->count);
-        return NULL;
+        return false;
+    }
+    
+    if (context->dependency_depth >= RULE_MAX_DEPENDENCY_DEPTH) {
+        fprintf(context->status, "Maximum dependency depth reach. Possibly a cycle.\n");
+        return false;
     }
 
-    
+    rule_t *rule = &rules->items[number - 1];
+    if (!rule_needs_rebuild(rule, context)) {
+        fprintf(context->status, "%.*s is up to date.\n",
+                (int)rule->output.count,
+                rule->output.items);
+        return true;
+    }
 
-    return NULL;
+    ++context->dependency_depth;
+
+    if (context->concurreny > 1) {
+        if (!run_dependencies_concurrently(rule, rules, context)) {
+            goto err;
+        }
+    } else {
+        for (size_t i = 0; i < rule->depends.count; ++i) {
+            if (!run_rule(rule->depends.items[i], rules, context)) {
+                goto err;
+            }
+        }
+    }
+
+    for (size_t i = 0; i < rule->input.count; ++i) {
+        if (!cmd_file_exists(rule->input.items[i].items)) {
+            fprintf(context->status,
+                    "Missing input file %.*s required by %.*s.\n",
+                    (int)rule->input.items[i].count,
+                    rule->input.items[i].items,
+                    (int)rule->output.count,
+                    rule->output.items);
+            goto err;
+        }
+    }
+
+    {
+        command_t *command = run_rule_only(rule, context);
+        if (!command) {
+            goto err;
+        }
+
+        int exit_code = cmd_wait(command);
+        if (exit_code != 0) {
+            fprintf(context->status,
+                    "Failed to produce %.*s, subprocess exited with a nonzero exit code.\n",
+                    (int)rule->output.count,
+                    rule->output.items);
+            goto err;
+        }
+    }
+
+    --context->dependency_depth;
+    return true;
+err:
+    --context->dependency_depth;
+    return false;
 }
 
 #define TYPE_0 file_list_t

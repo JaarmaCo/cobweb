@@ -6,6 +6,8 @@
 #include "../allocator.h"
 #include "../command_builder.h"
 
+#define RULE_MAX_DEPENDENCY_DEPTH 1024
+
 typedef struct rule rule_t;
 typedef struct rule_list rule_list_t;
 typedef struct file_list file_list_t;
@@ -64,7 +66,7 @@ struct flags_list {
 
 struct rule {
     file_list_t input;
-    file_list_t output;
+    string_builder_t output;
     flags_list_t flags;
     dependency_list_t depends;
     linker_arguments_t linker;
@@ -89,7 +91,9 @@ struct compiler {
 struct build_context {
     env_t *env;
     FILE *status;
+    int dependency_depth;
     int concurreny;
+    string_view_t output_directory;
     compiler_t compiler;
     command_builder_t command_builder;
 };
@@ -102,7 +106,9 @@ bool rule_list_from_json(rule_list_t *list, json_node_t json, FILE *status, allo
 
 command_t *run_rule_only(const rule_t *rule, build_context_t *context);
 
-command_t *run_rule(unsigned int number, const rule_list_t *rules, build_context_t *context);
+command_t *run_rule_async(unsigned int number, const rule_list_t *rules, build_context_t *context);
+
+bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *context);
 
 #define TYPE_0 file_list_t
 #define TYPE_1 string_builder_t

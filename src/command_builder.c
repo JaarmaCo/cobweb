@@ -31,6 +31,7 @@
 #define HEADER_ONLY
 #include "dynamic_array.h"
 
+#include <time.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -365,6 +366,22 @@ void cmd_clone(command_builder_t *cmd, const command_builder_t *source) {
   for (size_t i = 0; i < source->count; ++i) {
     cmd_append(cmd, source->items[i]);
   }
+}
+
+bool cmd_file_exists(const char *name) {
+    return access(name, F_OK);
+}
+
+double cmd_file_age_difference(const char *file, const char *test) {
+
+    struct stat st1 = {0}, st2 = {0};
+    if (stat(file, &st1) != 0) {
+        return stat(test, &st2) == 0 ? -1 : 0;
+    }
+    if (stat(test, &st2) != 0) {
+        return 0;
+    }
+    return difftime(st1.st_mtime, st2.st_mtime);
 }
 
 bool cmd_find_executable(command_builder_t *cmd, const char *name) {

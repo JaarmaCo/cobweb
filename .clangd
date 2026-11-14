@@ -1,6 +1,13 @@
+Completion:
+  HeaderInsertion: never
+
 Index:
   Background: skip
 
 Documentation:
   CommentFormat: Doxygen
+
+CompileFlags:
+  Add:
+    - -Isrc
 

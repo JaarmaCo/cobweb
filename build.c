@@ -78,6 +78,7 @@
   "concurrency/thread.c", \
   "concurrency/promise.c", \
   "concurrency/sync.c", \
+  "build-system/rule.c",\
   NULL
 
 #define TESTS \
@@ -157,6 +158,7 @@ int main(int argc, char **argv) {
 
   cmd_ensure_directory(OUT_DIR);
   cmd_ensure_directory(OUT_DIR "concurrency/");
+  cmd_ensure_directory(OUT_DIR "build-system/");
   cmd_ensure_directory(OUT_DIR TEST_DIR);
 
   cmd_compile(&cc, job_count, SRC_DIR, OUT_DIR, SOURCES);
