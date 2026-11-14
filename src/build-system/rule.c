@@ -1,10 +1,7 @@
 #include <limits.h>
 
 #include "rule.h"
-#include "allocator.h"
-#include "command_builder.h"
-#include "json.h"
-#include "string_builder.h"
+#include "compilation.h"
 
 static bool rule_input_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *allocator) {
     
@@ -357,6 +354,19 @@ bool rule_list_from_json(rule_list_t *list, json_node_t json, FILE *status, allo
         rule_list_append(list, rule);
     }
     return true;
+}
+
+void build_context_defaults(build_context_t *context, env_t *env, allocator_t *allocator) {
+    memset(context, 0, sizeof *context);
+    
+    env_inherit_environ(env);
+
+    context->env = env;
+    context->status = stderr;
+    context->command_builder.env = env;
+    context->command_builder.allocator = allocator;
+    context->output_directory = SV("out");
+    context->compiler = compiler_gcc();
 }
 
 void rule_destroy(rule_t *rule) {

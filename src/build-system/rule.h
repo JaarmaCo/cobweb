@@ -107,6 +107,8 @@ struct build_context {
     command_builder_t command_builder;
 };
 
+void build_context_defaults(build_context_t *context, env_t *env, allocator_t *allocator);
+
 void rule_destroy(rule_t *rule);
 
 bool rule_from_json(rule_t *rule, json_node_t json, FILE *status, allocator_t *allocator);

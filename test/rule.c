@@ -159,20 +159,10 @@ void building(allocator_t *allocator) {
     allocator_t *auto_free_context = auto_free_allocator(allocator);
     env_t env = {.allocator = auto_free_context};
 
-    env_inherit_environ(&env);
+    build_context_t context;
+    build_context_defaults(&context, &env, auto_free_context);
 
-    build_context_t context = {
-        .env = &env,
-        .status = stdout,
-        .dependency_depth = 0,
-        .concurreny = 0,
-        .output_directory = SV("test-out"),
-        .compiler = compiler_gcc(),
-        .command_builder = {
-            .allocator = auto_free_context,
-            .env = &env,
-        },
-    };
+    context.output_directory = SV("test-out");
 
     if (!run_rule(1, &rules, &context)) {
         fprintf(stderr, ERR("Failed to run the rule."));
