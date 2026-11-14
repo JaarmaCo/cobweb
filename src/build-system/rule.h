@@ -6,6 +6,7 @@
 #include "../allocator.h"
 #include "../command_builder.h"
 
+#define RULE_MAX_CONCURRENCY 64
 #define RULE_MAX_DEPENDENCY_DEPTH 1024
 
 typedef struct rule rule_t;

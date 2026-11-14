@@ -430,10 +430,11 @@ defer:
 static bool run_dependencies_concurrently(const rule_t *rule, const rule_list_t *rules, build_context_t *context) {
     unsigned int dep = 0;
     int concurrency = context->concurreny == 0 ? 1 : context->concurreny;
+    concurrency = concurrency < RULE_MAX_CONCURRENCY ? concurrency : RULE_MAX_CONCURRENCY;
     while (dep < rule->depends.count) {
 
-        command_t *running[64] = {0};
-        int exit_codes[64] = {0};
+        command_t *running[RULE_MAX_CONCURRENCY] = {0};
+        int exit_codes[RULE_MAX_CONCURRENCY] = {0};
 
         for (int i = 0; i < concurrency; ++i) {
             command_t *command = run_rule_async(rule->depends.items[i], rules, context);
