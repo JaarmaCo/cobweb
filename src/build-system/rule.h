@@ -79,7 +79,7 @@ struct rule_list {
     allocator_t *allocator;
 };
 
-typedef command_t *(*compiler_callback_t)(const rule_t *rule, command_builder_t *builder, void *arg);
+typedef command_t *(*compiler_callback_t)(const rule_t *rule, build_context_t *context, void *arg);
 
 struct compiler {
     compiler_callback_t callback;
@@ -88,6 +88,8 @@ struct compiler {
 
 struct build_context {
     env_t *env;
+    FILE *status;
+    int concurreny;
     compiler_t compiler;
     command_builder_t command_builder;
 };
@@ -98,9 +100,9 @@ bool rule_from_json(rule_t *rule, json_node_t json, FILE *status, allocator_t *a
 
 bool rule_list_from_json(rule_list_t *list, json_node_t json, FILE *status, allocator_t *allocator);
 
-command_t *run_rule(const rule_t *rule, build_context_t *context);
+command_t *run_rule_only(const rule_t *rule, build_context_t *context);
 
-command_t *run_rules(const rule_list_t *rules, build_context_t *context);
+command_t *run_rule(unsigned int number, const rule_list_t *rules, build_context_t *context);
 
 #define TYPE_0 file_list_t
 #define TYPE_1 string_builder_t

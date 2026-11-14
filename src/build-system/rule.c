@@ -355,11 +355,19 @@ void rule_destroy(rule_t *rule) {
     define_list_destroy(&rule->preprocessor.definitions);
 }
 
-command_t *run_rule(const rule_t *rule, build_context_t *context) {
-    return context->compiler.callback(rule, &context->command_builder, context->compiler.arg);
+command_t *run_rule_only(const rule_t *rule, build_context_t *context) {
+    return context->compiler.callback(rule, context, context->compiler.arg);
 }
 
-command_t *run_rules(const rule_list_t *rules, build_context_t *context) {
+command_t *run_rule(unsigned int number, const rule_list_t *rules, build_context_t *context) {
+    
+    if (number == 0 || number > rules->count) {
+        fprintf(context->status, "Rule number %u is outside the valid range [1, %u]\n",
+                number, (unsigned int)rules->count);
+        return NULL;
+    }
+
+    
 
     return NULL;
 }

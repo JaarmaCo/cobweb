@@ -273,6 +273,13 @@ int cmd_exec_sync(command_builder_t *cmd);
 int cmd_exec_sync_maybe(command_builder_t *cmd);
 
 /**
+ * Run a function call asynchronously in a new process.
+ *
+ * @return A handle to the spawned process.
+ */
+command_t *cmd_async(void(*runner)(void *), void *arg);
+
+/**
  * Executes the constructed command line by spawning a new process. This
  * function does not wait for the process to exit, instead it returns a handle
  * that can be used to wait for the process at a later stage.
