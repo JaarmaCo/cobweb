@@ -38,32 +38,32 @@ static command_t *compile_gcc(const rule_t *rule, build_context_t *build, void *
         cmd_append(&build->command_builder, "-ggdb");
     }
 
-    for (size_t i = 0; i < rule->linker.directories.count; ++i) {
+    for (size_t i = 0; i < rule->options.linker.directories.count; ++i) {
         cmd_format(&build->command_builder, "-L%.*s",
-                (int)rule->linker.directories.items[i].count,
-                rule->linker.directories.items[i].items);
+                (int)rule->options.linker.directories.items[i].count,
+                rule->options.linker.directories.items[i].items);
     }
 
-    for (size_t i = 0; i < rule->linker.libraries.count; ++i) {
+    for (size_t i = 0; i < rule->options.linker.libraries.count; ++i) {
         cmd_format(&build->command_builder, "-l%.*s",
-                (int)rule->linker.libraries.items[i].count,
-                rule->linker.libraries.items[i].items);
+                (int)rule->options.linker.libraries.items[i].count,
+                rule->options.linker.libraries.items[i].items);
     }
 
-    if (rule->linker.rpath.count != 0) {
+    if (rule->options.linker.rpath.count != 0) {
         cmd_format(&build->command_builder, "-rpath=%.*s",
-                (int)rule->linker.rpath.count,
-                rule->linker.rpath.items);
+                (int)rule->options.linker.rpath.count,
+                rule->options.linker.rpath.items);
     }
 
-    for (size_t i = 0; i < rule->preprocessor.includes.count; ++i) {
+    for (size_t i = 0; i < rule->options.preprocessor.includes.count; ++i) {
         cmd_format(&build->command_builder, "-I%.*s",
-                (int)rule->preprocessor.includes.items[i].count,
-                rule->preprocessor.includes.items[i].items);
+                (int)rule->options.preprocessor.includes.items[i].count,
+                rule->options.preprocessor.includes.items[i].items);
     }
 
-    for (size_t i = 0; i < rule->preprocessor.definitions.count; ++i) {
-        preprocessor_definition_t *def = &rule->preprocessor.definitions.items[i];
+    for (size_t i = 0; i < rule->options.preprocessor.definitions.count; ++i) {
+        preprocessor_definition_t *def = &rule->options.preprocessor.definitions.items[i];
         if (def->expansion.count != 0) {
             cmd_format(&build->command_builder, "-D%.*s=%.*s",
                     (int)def->symbol.count,
@@ -77,10 +77,6 @@ static command_t *compile_gcc(const rule_t *rule, build_context_t *build, void *
         }
     }
 
-    for (size_t i = 0; i < rule->flags.count; ++i) {
-        cmd_append_sv(&build->command_builder, sb_view(&rule->flags.items[i]));
-    }
-    
     {
         string_builder_t opath = {.allocator = build->command_builder.allocator};
         sb_append_sv(&opath, build->output_directory);
