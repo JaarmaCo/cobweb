@@ -30,12 +30,21 @@ void parsing_rules(allocator_t *allocator) {
     json_node_t json = json_load(&pool, f);
     fclose(f);
 
+    fprintf(stderr, INFO("Input:"));
+    json_pretty_print(json, 2, 1, stderr);
+
+    fputc('\n', stderr);
+
     if (!rule_list_from_json(&rules, json, stdout, allocator)) {
         fprintf(stderr, ERR("Trusted test asset failed to parse."));
         exit(1);
     }
 
-    json_dumpf(rule_list_to_json(&rules, &pool), stderr);
+    fprintf(stderr, INFO("Output:"));
+    json_pretty_print(rule_list_to_json(&rules, &pool), 2, 1, stderr);
+
+    fputc('\n', stderr);
+
     json_destroy_pool(&pool);
     rule_list_destroy(&rules);
 }

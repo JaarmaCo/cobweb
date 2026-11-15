@@ -70,6 +70,7 @@
   "json.c", \
   "json_parse.c", \
   "json_value_parser.c", \
+  "json_pretty_print.c",\
   "scratch_allocator.c", \
   "stream.c", \
   "string_builder.c", \

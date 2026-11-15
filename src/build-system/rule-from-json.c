@@ -13,6 +13,21 @@ bool rule_type_from_json(rule_type_t *value,
 
 bool file_list_from_json(file_list_t *value,
         json_node_t json, FILE *status, allocator_t *allocator) {
+    
+    {
+        json_string_t string;
+        if (json_get(json, JSON_STRING, &string)) {
+
+            memset(value, 0, sizeof *value);
+
+            string_builder_t sb = {.allocator = allocator};
+            sb_append_sv(&sb, sb_view(&string));
+           
+            file_list_append(value, sb);
+            return true;
+        }
+    }
+
     JSON_LIST_FROM_JSON_IMPLEMENTATION(file_list_t, string_builder_t,
             string_builder, file_list_append);
 } 
@@ -84,7 +99,7 @@ bool compiler_switches_bits_from_json(compiler_switches_bits_t *value,
             (COMPILER_EMIT_RULE_LIST, "emit-rule-list"));
 }
 
-bool compiler_swiches_from_json(compiler_switches_t *value,
+bool compiler_switches_from_json(compiler_switches_t *value,
         json_node_t json, FILE *status, allocator_t *allocator) {
     JSON_FLAGS_FROM_JSON_IMPLEMENTATION(compiler_switches_t,
             compiler_switches_bits_t, compiler_switches_bits);

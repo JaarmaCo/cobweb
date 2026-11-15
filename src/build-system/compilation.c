@@ -9,33 +9,58 @@ struct gcc_compiler {
     _Alignas(max_align_t) char buffer[4096];
 } gcc_compiler;
 
-static command_t *compile_gcc(const rule_t *rule, build_context_t *build, void *arg) {
-    (void)arg;
-    cmd_reset(&build->command_builder);
-    switch (rule->type)
-    {
-    case RULE_OBJECT:
-        cmd_clone(&build->command_builder, &gcc_compiler.cc);
-        cmd_append(&build->command_builder, "-c");
-        break;
-    case RULE_EXECUTABLE:
-        cmd_clone(&build->command_builder, &gcc_compiler.cc);
-        break;
-    case RULE_DYNAMIC_LIBRARY:
-        cmd_clone(&build->command_builder, &gcc_compiler.cc);
-        cmd_append(&build->command_builder, "-dynamic"); 
-        break;
-    case RULE_STATIC_LIBRARY:
-        cmd_clone(&build->command_builder, &gcc_compiler.ar);
-        cmd_append_sv(&build->command_builder, sb_view(&rule->output));
-        for (size_t i = 0; i < rule->input.count; ++i) {
-            cmd_append_sv(&build->command_builder, sb_view(&rule->input.items[i]));
-        }
-        return cmd_exec_async(&build->command_builder);
+static void gcc_apply_options(const rule_t *rule, build_context_t *build) {
+    
+    if (rule->options.switches & COMPILER_EMIT_DEBUG_SYMBOLS) {
+        cmd_append(&build->command_builder, "-ggdb");
     }
 
-    if (env_find(build->env, SV("debug"))) {
-        cmd_append(&build->command_builder, "-ggdb");
+    if (rule->options.switches & COMPILER_PIC) {
+        cmd_append(&build->command_builder, "-fPIC");
+    }
+
+    switch (rule->options.optimization)
+    {
+    case COMPILER_OPTIMIZATION_OFF:
+        cmd_append(&build->command_builder, "-O0");
+        break;
+    case COMPILER_OPTIMIZATION_LOW:
+        cmd_append(&build->command_builder, "-Og");
+        break;
+    case COMPILER_OPTIMIZATION_MODERATE:
+        cmd_append(&build->command_builder, "-O");
+        break;
+    case COMPILER_OPTIMIZATION_HIGH:
+        cmd_append(&build->command_builder, "-O2");
+        break;
+    case COMPILER_OPTIMIZATION_ADVANCED:
+        cmd_append(&build->command_builder, "-O3");
+        break;
+    case COMPILER_OPTIMIZATION_AGRESSIVE:
+        cmd_append(&build->command_builder, "-Ofast");
+        break;
+    }
+    
+    switch (rule->options.warnings)
+    {
+    case COMPILER_WARNINGS_OFF:
+        break;
+    case COMPILER_WARNINGS_BASIC:
+        cmd_append(&build->command_builder, "-Wall");
+        break;
+    case COMPILER_WARNINGS_MODERATE:
+        cmd_append_all(&build->command_builder, "-Wall", "-Wextra", NULL);
+        break;
+    case COMPILER_WARNINGS_STRICT:
+        cmd_append_all(&build->command_builder, "-Wall", "-Wextra", "-Wconversion", NULL);
+        break;
+    case COMPILER_WARNINGS_PEDANTIC:
+        cmd_append_all(&build->command_builder, "-Wall", "-Wextra", "-Wconversion", "-Wpedantic", NULL);
+        break;
+    }
+
+    if (rule->options.switches & COMPILER_TREAT_WARNINGS_AS_ERRORS) {
+        cmd_append(&build->command_builder, "-Werror");
     }
 
     for (size_t i = 0; i < rule->options.linker.directories.count; ++i) {
@@ -76,24 +101,58 @@ static command_t *compile_gcc(const rule_t *rule, build_context_t *build, void *
                     def->symbol.items);
         }
     }
+}
 
-    {
-        string_builder_t opath = {.allocator = build->command_builder.allocator};
-        sb_append_sv(&opath, build->output_directory);
-        if (!sv_ends_with_char(sb_view(&opath), '/')) {
-            sb_append_char(&opath, '/');
-        }
-        sb_append_sv(&opath, sb_view(&rule->output));
+static void gcc_set_output(string_view_t output, build_context_t *build) {
 
-        cmd_append(&build->command_builder, "-o");
-        cmd_append_sv(&build->command_builder, sb_view(&opath));
-
-        sb_destroy(&opath);
+    string_builder_t opath = {.allocator = build->command_builder.allocator};
+    sb_append_sv(&opath, build->output_directory);
+    if (!sv_ends_with_char(sb_view(&opath), '/')) {
+        sb_append_char(&opath, '/');
     }
+    sb_append_sv(&opath, output);
 
+    cmd_append(&build->command_builder, "-o");
+    cmd_append_sv(&build->command_builder, sb_view(&opath));
+
+    sb_destroy(&opath);
+}
+
+static void gcc_set_inputs(const rule_t *rule, build_context_t *build) {
     for (size_t i = 0; i < rule->input.count; ++i) {
         cmd_append_sv(&build->command_builder, sb_view(&rule->input.items[i]));
     }
+}
+
+static command_t *compile_gcc(const rule_t *rule, build_context_t *build, void *arg) {
+    (void)arg;
+    
+    cmd_reset(&build->command_builder);
+    switch (rule->type)
+    {
+    case RULE_OBJECT:
+        cmd_clone(&build->command_builder, &gcc_compiler.cc);
+        cmd_append(&build->command_builder, "-c");
+        break;
+    case RULE_EXECUTABLE:
+        cmd_clone(&build->command_builder, &gcc_compiler.cc);
+        break;
+    case RULE_DYNAMIC_LIBRARY:
+        cmd_clone(&build->command_builder, &gcc_compiler.cc);
+        cmd_append(&build->command_builder, "-dynamic"); 
+        break;
+    case RULE_STATIC_LIBRARY:
+        cmd_clone(&build->command_builder, &gcc_compiler.ar);
+        cmd_append_sv(&build->command_builder, sb_view(&rule->output));
+        for (size_t i = 0; i < rule->input.count; ++i) {
+            cmd_append_sv(&build->command_builder, sb_view(&rule->input.items[i]));
+        }
+        return cmd_exec_async(&build->command_builder);
+    } 
+
+    gcc_apply_options(rule, build);
+    gcc_set_output(sb_view(&rule->output), build);
+    gcc_set_inputs(rule, build); 
 
     return cmd_exec_async(&build->command_builder);
 } 

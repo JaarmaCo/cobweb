@@ -94,6 +94,7 @@
 #define destroy M_NAME(destroy)
 #define grow M_NAME(grow)
 #define destroy M_NAME(destroy)
+#define probe M_NAME(probe)
 
 #if defined(DEFINE_STRUCT)
 
@@ -117,6 +118,19 @@ typedef struct hashmap {
  */
 INLINE
 void destroy(hashmap *hm);
+
+/**
+ * Probe the hashmap.
+ *
+ * @param hm Hashmap to query.
+ * @param hash Hash key to search for.
+ * @param state Iterator state variable pointer.
+ * @param position Out parameter for the current probed position.
+ *
+ * @return false When the iterator loop should break.
+ */
+INLINE
+bool probe(const hashmap *hm, size_t hash, size_t *state, size_t *position);
 
 /**
  * Insert an entry into the hashmap.
@@ -226,22 +240,17 @@ bool grow(hashmap *hm) {
   }
   memset(new_items, 0, new_size * sizeof(hashmap_entry));
 
+  hashmap hm_new;
+  hm_new.allocator = hm->allocator;
+  hm_new.items = new_items;
+  hm_new.capacity = new_size;
+  hm_new.count = 0;
+
   for (size_t i = 0; i < hm->capacity; ++i) {
-
     if (hm->items[i].hash == 0) {
-      continue; // Not occupied
+      continue;
     }
-
-    hashmap_entry *entry = &hm->items[i];
-
-    size_t position = entry->hash % new_size;
-    for (size_t j = 1; j <= new_size; ++j) {
-      if (new_items[position].hash == 0) {
-        new_items[position] = *entry;
-        break;
-      }
-      position = (position + j * j) % new_size;
-    }
+    insert(&hm_new, hm->items[i].key, hm->items[i].value);
   }
 
   allocator_release(hm->allocator, hm->items,
@@ -253,6 +262,13 @@ bool grow(hashmap *hm) {
 }
 
 INLINE
+bool probe(const hashmap *hm, size_t hash, size_t *state, size_t *position) {
+  size_t i = *state;
+  *position = (hash + (i + i * i) / 2) % hm->capacity;
+  return (*state)++ <= hm->capacity;
+}
+
+INLINE
 hashmap_entry *find(const hashmap *hm, TKey key) {
 
   if (hm->count == 0) {
@@ -261,14 +277,16 @@ hashmap_entry *find(const hashmap *hm, TKey key) {
 
   size_t hash = hash_key(key);
   hash = hash == 0 ? 1 : hash;
-
-  size_t position = hash % hm->capacity;
-  for (size_t i = 1; i <= hm->capacity; ++i) {
-    if (hm->items[position].hash == hash &&
-        equals_key(key, hm->items[position].key)) {
+  
+  size_t i = 0;
+  size_t position = 0;
+  while (probe(hm, hash, &i, &position)) {
+    if (hm->items[position].hash == 0) {
+      continue;
+    }
+    if (equals_key(key, hm->items[position].key)) {
       return &hm->items[position];
     }
-    position = (position + i * i) % hm->capacity;
   }
   return NULL;
 }
@@ -284,22 +302,23 @@ hashmap_entry *insert(hashmap *hm, TKey key, TValue value) {
 
   size_t hash = hash_key(key);
   hash = hash == 0 ? 1 : hash;
+ 
+  size_t position = 0;
+  size_t i = 0;
 
-  size_t position = hash % hm->capacity;
-  for (size_t i = 1; i <= hm->capacity; ++i) {
-
-    if (hm->items[position].hash == 0) {
-      ++hm->count;
-      break; // Not occupied
-    }
-
+  while (probe(hm, hash, &i, &position)) {
     if (equals_key(key, hm->items[position].key)) {
       return NULL;
     }
-
-    position = (position + i * i) % hm->capacity;
+    if (hm->items[position].hash == 0) {
+      break;
+    }
   }
 
+  assert(hm->items[position].hash == 0);
+
+  ++hm->count;
+  
   hm->items[position].hash = hash;
   hm->items[position].key = key;
   hm->items[position].value = value;
@@ -328,21 +347,26 @@ hashmap_entry *put(hashmap *hm, TKey key, TValue value) {
 
   size_t hash = hash_key(key);
   hash = hash == 0 ? 1 : hash;
+  
+  size_t position = 0;
+  size_t i = 0;
 
-  size_t position = hash % hm->capacity;
-  for (size_t i = 1; i <= hm->capacity; ++i) {
-
+  while (probe(hm, hash, &i, &position)) {
     if (hm->items[position].hash == 0) {
-      ++hm->count;
-      break; // Not occupied
+      break;
     }
-
     if (equals_key(key, hm->items[position].key)) {
-      break; // Replace current value.
+      break;
     }
-
-    position = (position + i * i) % hm->capacity;
   }
+
+  assert(hm->items[position].hash == 0 || 
+        equals_key(key, hm->items[position].key));
+
+  if (hm->items[position].hash == 0) {
+    ++hm->count;
+  }
+
   hm->items[position].hash = hash;
   hm->items[position].key = key;
   hm->items[position].value = value;
@@ -387,4 +411,5 @@ bool delete_(hashmap *hm, TKey key) {
 #undef destroy
 #undef grow
 #undef destroy
+#undef probe
 #include "template-undef.h"
