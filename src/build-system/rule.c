@@ -51,6 +51,7 @@ void build_context_defaults(build_context_t *context, env_t *env, allocator_t *a
     context->command_builder.allocator = allocator;
     context->output_directory = SV("out");
     context->compiler = compiler_gcc();
+    context->allocator = allocator;
 }
 
 command_t *run_rule_only(const rule_t *rule, build_context_t *context) {

@@ -353,6 +353,11 @@ struct build_context {
      * must contain valid allocator, and env fields.
      */
     command_builder_t command_builder;
+
+    /**
+     * Allocator to use whenever a new one is requested.
+     */
+    allocator_t *allocator;
 };
 
 /**
@@ -403,6 +408,34 @@ void linker_arguments_destroy(linker_arguments_t *arguments);
 void compiler_options_destroy(compiler_options_t *options);
 
 void rule_destroy(rule_t *rule);
+
+static inline compiler_options_t compiler_options(allocator_t *allocator) {
+    compiler_options_t result = {
+        .switches = 0,
+        .warnings = 0,
+        .optimization = 0,
+        .preprocessor = {
+            .definitions = {
+                .allocator = allocator,
+            },
+            .includes = {
+                .allocator = allocator,
+            },
+        },
+        .linker = {
+            .rpath = {
+                .allocator = allocator,
+            },
+            .libraries = {
+                .allocator = allocator,
+            },
+            .directories = {
+                .allocator = allocator,
+            }
+        }
+    };
+    return result;
+}
 
 bool rule_type_from_json(rule_type_t *value,
         json_node_t json, FILE *status, allocator_t *allocator);

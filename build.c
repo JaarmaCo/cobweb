@@ -80,6 +80,8 @@
   "concurrency/promise.c", \
   "concurrency/sync.c", \
   "build-system/rule.c",\
+  "build-system/project.c", \
+  "build-system/project-from-json.c",\
   "build-system/rule-from-json.c",\
   "build-system/compilation.c",\
   NULL

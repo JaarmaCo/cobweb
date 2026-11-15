@@ -6,6 +6,9 @@ typedef struct build_project build_project_t;
 typedef struct build_target build_target_t;
 typedef struct build_target_list build_target_list_t;
 typedef struct target_compiler_options target_compiler_options_t;
+typedef struct project_generator_context project_generator_context_t;
+typedef struct target_dependency target_dependency_t;
+typedef struct target_dependency_map target_dependency_map_t;
 
 struct target_compiler_options {
     
@@ -80,6 +83,7 @@ struct build_target_list {
     size_t count;
     size_t capacity;
     build_target_t *items;
+    allocator_t *allocator;
 };
 
 struct build_project {
@@ -107,18 +111,108 @@ struct build_project {
     build_target_list_t targets;
 };
 
+struct target_dependency {
+    size_t hash;
+    string_builder_t key;
+    unsigned int value;
+};
+
+struct target_dependency_map {
+    size_t count;
+    size_t capacity;
+    target_dependency_t *items;
+    allocator_t *allocator;
+};
+
+struct project_generator_context {
+   
+    /**
+     * File stream to echo status messages to
+     */
+    FILE *status;
+
+    /**
+     * Allocator to use when constructing the rule datastructures.
+     */
+    allocator_t *allocator;
+
+    /**
+     * Implementation detail, set to 0
+     */
+    size_t dependency_depth;
+
+    /**
+     * Cache used for looking up targets by name
+     */
+    target_dependency_map_t indexed_targets;
+
+    /**
+     * Registry of artifacts (by resource locator) and their rule indices
+     */
+    target_dependency_map_t artifact_rules;
+
+    /**
+     * Map of targets that are already added
+     */
+    target_dependency_map_t completed_targets;
+};
+
 /**
- * Append the rules required to produce the target of the given name.
- *
- * @param name Name of the target to produce.
- * @param project Project where the target is found.
- * @param rules List of rules to append to.
- * @param context Context of the build process.
- *
- * @return true on success, false in the case of an error.
+ * Generate a rule list based on the provided project description.
  */
-bool target_emit_rules(string_view_t name, const build_project_t *project,
-        rule_list_t *rules, build_context_t *context);
+bool build_project_emit_rules(const build_project_t *project,
+        rule_list_t *rules, project_generator_context_t *context);
+
+unsigned int build_target_emit_rules(const build_target_t *target, const build_project_t *project,
+        rule_list_t *rules, project_generator_context_t *context);
+
+void target_compiler_options_destroy(target_compiler_options_t *value);
+
+void build_target_destroy(build_target_t *value);
+
+void build_target_list_destroy(build_target_list_t *value);
+
+void build_project_destroy(build_project_t *value);
+
+bool target_compiler_options_from_json(target_compiler_options_t *value, 
+    json_node_t json, FILE *status, allocator_t *allocator);
+
+bool build_target_from_json(build_target_t *value,
+    json_node_t json, FILE *status, allocator_t *allocator);
+
+bool build_target_list_from_json(build_target_list_t *value,
+    json_node_t json, FILE *status, allocator_t *allocator);
+
+bool build_project_from_json(build_project_t *value,
+    json_node_t json, FILE *status, allocator_t *allocator);
+
+json_node_t target_compiler_options_to_json(const target_compiler_options_t *value, json_pool_t *pool);
+
+json_node_t build_target_to_json(const build_target_t *value, json_pool_t *pool);
+
+json_node_t build_target_list_to_json(const build_target_list_t *value, json_pool_t *pool);
+
+json_node_t build_project_to_json(const build_project_t *value, json_pool_t *pool);
+
+#define TYPE_0 build_target_list_t
+#define TYPE_1 build_target_t
+#define FUNCTION_0 build_target_destroy
+#define PREFIX build_target_list_
+#define SUFFIX 
+#define C_HEADER
+#include "../dynamic_array.h"
+
+#define TYPE_0 target_dependency_map_t
+#define TYPE_1 target_dependency_t
+#define TYPE_2 string_builder_t
+#define TYPE_3 unsigned int
+#define FUNCTION_0(e) sb_destroy(&e->key)
+#define FUNCTION_1(k) sv_hash(sb_view(&k))
+#define FUNCTION_2(x, y) sv_equals(sb_view(&x), sb_view(&y))
+#define PREFIX target_dependency_map_
+#define SUFFIX
+#define C_HEADER
+#include "../hashmap.h"
 
 #define BUILD_SYSTEM_PROJECT_H_
 #endif
