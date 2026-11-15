@@ -196,8 +196,11 @@ bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *co
         sb_append_sv(&output_rel_input, sb_view(&input));
 
         if (cmd_file_exists(output_rel_input.items)) {
-            sb_destroy(&input);
-            rule->input.items[i] = output_rel_input;
+            
+            rule->input.items[i].count = 0;
+            sb_append_sv(&rule->input.items[i], sb_view(&output_rel_input));
+            
+            sb_destroy(&output_rel_input);
             continue;
         }
 
