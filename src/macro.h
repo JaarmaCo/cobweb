@@ -210,8 +210,40 @@
 #define M_COMMA_T
 #define M_COMMA(Lst) M_CAT(M_COMMA_, Lst)
 
+#define M_COMMA_STR_F ", "
+#define M_COMMA_STR_T
+#define M_COMMA_STR(Lst) M_CAT(M_COMMA_STR_, Lst)
+
 #define M_NAME(base) M_CAT3(PREFIX, base, SUFFIX)
 #define M_TYPENAME M_NAME(TYPE_0)
+
+#define M_CALL(M, Args) M_EXPAND(M Args)
+
+#define M_FST_1(x) x
+#define M_FST_2(x, y) x
+#define M_FST_3(x, y, z) x
+#define M_FST_4(x, y, z, w) x
+
+#define M_SND_2(x, y) y
+#define M_SND_3(x, y, z) y
+#define M_SND_4(x, y, z, w) y
+
+#define M_THD_3(x, y, z) z
+#define M_THD_4(x, y, z, w) z
+
+#define M_4TH_4(x, y, z, w) w
+
+#define M_FST(It) M_CAT(M_FST_, M_ARG_COUNT It) It
+#define M_SND(It) M_CAT(M_SND_, M_ARG_COUNT It) It
+#define M_THD(It) M_CAT(M_THD_, M_ARG_COUNT It) It
+#define M_4TH(It) M_CAT(M_4TH_, M_ARG_COUNT It) It
+
+#define M_UNWRAP_(...) __VA_ARGS__
+#define M_UNWRAP(x) M_UNWRAP_ x
+
+#define M_IF_T(T, F) M_UNWRAP(T)
+#define M_IF_F(T, F) M_UNWRAP(F)
+#define M_IF(Cond, T, F) M_CAT(M_IF_, Cond) (T, F)
 
 #define MACRO_H_
 #endif

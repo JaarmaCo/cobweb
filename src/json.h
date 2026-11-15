@@ -31,6 +31,7 @@
 
 #include <stdint.h>
 
+#include "macro.h"
 #include "allocator.h"
 #include "string_builder.h"
 #include "string_view.h"
@@ -43,6 +44,148 @@
 #define JSON_ERROR_INVALID_ESCAPE_SEQUENCE 6
 #define JSON_WARNING_UNICODE_ESCAPE_SEQUENCES_NOT_SUPPORTED 100
 #define JSON_ERROR_MEMORY_ALLOCATION_FAILED -99
+
+#define JSON_ENUM_FROM_JSON_FE_(I, Fst, Lst, It) \
+    if (strncmp(M_SND(It), string.items, string.count) == 0) {\
+        *value = M_FST(It);\
+        return true;\
+    }
+
+#define JSON_ENUM_FROM_JSON_ONEOF_(I, Fst, Lst, It) \
+    "\"" M_SND(It) "\"" M_COMMA_STR(Lst)
+
+#define JSON_ENUM_FROM_JSON_IMPLEMENTATION(E, ...) \
+    (void)allocator;\
+    json_string_t string;\
+    \
+    if (!json_get(json, JSON_STRING, &string)) {\
+        fputs("Expected a string (" #E ")\n", status);\
+        return false;\
+    }\
+    \
+    M_FOREACH(JSON_ENUM_FROM_JSON_FE_, __VA_ARGS__)\
+    fputs("Expected one of [ " M_FOREACH(JSON_ENUM_FROM_JSON_ONEOF_, __VA_ARGS__) " ] (" #E ")\n", status);\
+    return false\
+
+#define JSON_ENUM_TO_JSON_FE_(I, Fst, Lst, It) \
+    case M_FST(It):\
+        sb_append_cstr(&sb, M_SND(It));\
+        return json_new_string(pool, sb);
+
+#define JSON_ENUM_TO_JSON_IMPLEMENTATION(E, ...) \
+    string_builder_t sb = {.allocator = pool->allocator};\
+    switch (*value) \
+    {\
+    M_FOREACH(JSON_ENUM_TO_JSON_FE_, __VA_ARGS__)\
+    }\
+    return json_new(pool, JSON_NULL)
+
+#define JSON_FLAGS_FROM_JSON_IMPLEMENTATION(F, E, Name)\
+    json_string_t string;\
+    json_array_t array;\
+    if (json_get(json, JSON_STRING, &string)) {\
+        E x;\
+        if (!Name##_from_json(&x, json, status, allocator)) {\
+            fputs("When parsing flags type " #F " from a string.\n", status);\
+            return false;\
+        }\
+        *value = (F)x;\
+        return true;\
+    }\
+    *value = 0;\
+    if (json_get(json, JSON_ARRAY, &array)) {\
+        for (size_t i = 0; i < array.count; ++i) {\
+            E x;\
+            if (!Name##_from_json(&x, array.items[i], status, allocator)) {\
+                fprintf(status, "In flags list at index %zu (" #F ")\n", i);\
+                return false;\
+            }\
+            *value |= x;\
+        }\
+        return true;\
+    }\
+    fputs("Expected a string or an array (" #F ")\n", status);\
+    return false\
+
+#define JSON_FLAGS_TO_JSON_VALS_(I, Fst, Lst, It) M_FST(It) ,
+#define JSON_FLAGS_TO_JSON_STRS_(I, Fst, Lst, It) M_SND(It) ,
+
+#define JSON_FLAGS_TO_JSON_IMPLEMENTATION(F, E, ...) \
+    json_node_t array = json_new_array(pool);\
+    string_builder_t sb = {.allocator = pool->allocator};\
+    const E VALUES[] = { M_FOREACH(JSON_FLAGS_TO_JSON_VALS_, __VA_ARGS__) };\
+    char const *const STRINGS[] = { M_FOREACH(JSON_FLAGS_TO_JSON_STRS_, __VA_ARGS__) };\
+    for (size_t i = 0; i < sizeof VALUES / sizeof VALUES[0]; ++i) {\
+        if ((*value & VALUES[i]) == VALUES[i]) {\
+            sb_append_cstr(&sb, STRINGS[i]);\
+            json_append(array, json_new_string(pool, sb));\
+        }\
+    }\
+    return array
+
+#define JSON_LIST_FROM_JSON_IMPLEMENTATION(S, T, Name, Append)\
+    json_array_t array;\
+    if (!json_get(json, JSON_ARRAY, &array)) {\
+        fputs("Expected an array (" #S ").\n", status);\
+        return false;\
+    }\
+    value->allocator = allocator;\
+    value->count = 0;\
+    value->capacity = 0;\
+    value->items = NULL;\
+    for (size_t i = 0; i < array.count; ++i) {\
+        T x;\
+        if (!Name##_from_json(&x, array.items[i], status, allocator)) {\
+            fprintf(status, "At position %zu (" #S ")\n", i);\
+            return false;\
+        }\
+        Append(value, x);\
+    }\
+    return true
+
+#define JSON_LIST_TO_JSON_IMPLEMENTATION(Name) \
+    json_node_t array = json_new_array(pool);\
+    for (size_t i = 0; i < value->count; ++i) {\
+        json_append(array, Name##_to_json(&value->items[i], pool));\
+    }\
+    return array
+
+// It : (Typename, StructField, JsonProperty, Optional)
+#define JSON_OBJECT_FROM_JSON_FE_(I, Fst, Snd, It)\
+    child = json_find(json, SV(M_THD(It)));\
+    if (child) {\
+      if (!M_CAT(M_FST(It), _from_json)(&value->M_SND(It), *child, status, allocator)) {\
+          fputs("In property \"" M_THD(It) "\"", status);\
+          goto err;\
+      }\
+    } else {\
+        M_IF(M_4TH(It), (\
+            (void)0;\
+        ), (\
+            fputs("Missing required property \"" M_THD(It) "\"", status);\
+            goto err;\
+        ))\
+    }
+
+#define JSON_OBJECT_FROM_JSON_IMPLEMENTATION(S, ...) \
+    memset(value, 0, sizeof *value);\
+    json_node_t *child;\
+    M_FOREACH(JSON_OBJECT_FROM_JSON_FE_, __VA_ARGS__)\
+    return true;\
+err:\
+    fputs(" (" #S ")\n", status);\
+    return false
+
+#define JSON_OBJECT_TO_JSON_FE_(I, Fst, Lst, It) \
+    {\
+        json_node_t node = M_CAT(M_FST(It), _to_json)(&value->M_SND(It), pool);\
+        json_put(object, SV(M_THD(It)), node);\
+    }
+
+#define JSON_OBJECT_TO_JSON_IMPLEMENTATION(...)\
+    json_node_t object = json_new_object(pool);\
+    M_FOREACH(JSON_OBJECT_TO_JSON_FE_, __VA_ARGS__)\
+    return object
 
 typedef struct json_object json_object_t;
 typedef struct json_object_entry json_object_entry_t;

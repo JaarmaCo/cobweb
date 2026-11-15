@@ -142,11 +142,10 @@ typedef enum compiler_optimization_level {
     COMPILER_OPTIMIZATION_ADVANCED = 4,
     
     /**
-     * Use the highest level of optimization, and also
-     * apply optimizations that could affect the control
-     * flow of the program.
+     * Ignore build speed entirely and apply all optimizations
+     * that are available.
      */
-    COMPILER_OPTIMIZATION_UNSAFE = 5,
+    COMPILER_OPTIMIZATION_AGRESSIVE = 5,
 
 } compiler_optimization_level_t;
 
@@ -276,11 +275,6 @@ struct rule {
     string_builder_t output;
 
     /**
-     * List of miscellaneous arguments to pass to the new process.
-     */
-    flags_list_t flags;
-
-    /**
      * List of 1-based indices that indicates the rules that need
      * to run before this one.
      */
@@ -290,12 +284,6 @@ struct rule {
      * Options to pass to the different compilation phases.
      */
     compiler_options_t options;
-
-    /**
-     * Pointer to an allocator that will be used by operations on
-     * this rule.
-     */
-    allocator_t *allocator;
 };
 
 struct rule_list {
@@ -384,28 +372,6 @@ struct build_context {
 void build_context_defaults(build_context_t *context, env_t *env, allocator_t *allocator);
 
 /**
- * Free all memory that was allocated in the given rule.
- */
-void rule_destroy(rule_t *rule);
-
-/**
- * Initialize a rule by reading data from a json value.
- *
- * @param rule Pointer to an uninitialized rule_t structure.
- * @param json JSON value to read.
- * @param status File stream to report status messages to.
- * @param allocator Allocator used when allocating the rule
- *        datastructure.
- */
-bool rule_from_json(rule_t *rule, json_node_t json, FILE *status, allocator_t *allocator);
-
-/**
- * Reads a list of rules from a JSON value. Uses the same
- * interface as that of rule_from_json.
- */
-bool rule_list_from_json(rule_list_t *list, json_node_t json, FILE *status, allocator_t *allocator);
-
-/**
  * Run a rule without running transitive dependencies.
  */
 command_t *run_rule_only(const rule_t *rule, build_context_t *context);
@@ -429,6 +395,94 @@ command_t *run_rule_async(unsigned int number, const rule_list_t *rules, build_c
  *         false if the output was missing/out-of-date and could not be produced.
  */
 bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *context);
+
+void preprocessor_arguments_destroy(preprocessor_arguments_t *arguments);
+
+void linker_arguments_destroy(linker_arguments_t *arguments);
+
+void compiler_options_destroy(compiler_options_t *options);
+
+void rule_destroy(rule_t *rule);
+
+bool rule_type_from_json(rule_type_t *value,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool file_list_from_json(file_list_t *value,
+        json_node_t json, FILE *status, allocator_t *allocator); 
+
+bool string_builder_from_json(string_builder_t *sb,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool dependency_index_from_json(unsigned int *index,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool dependency_list_from_json(dependency_list_t *list,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool compiler_options_from_json(compiler_options_t *options,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool compiler_switches_bits_from_json(compiler_switches_bits_t *switches,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool compiler_switches_from_json(compiler_switches_t *switches,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool compiler_warning_level_from_json(compiler_warning_level_t *level,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool compiler_optimization_level_from_json(compiler_optimization_level_t *level,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool preprocessor_arguments_from_json(preprocessor_arguments_t *arguments,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool preprocessor_definition_list_from_json(preprocessor_definition_list_t *list,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool preprocessor_definition_from_json(preprocessor_definition_t *def,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool linker_arguments_from_json(linker_arguments_t *arguments,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool rule_from_json(rule_t *value,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool rule_list_from_json(rule_list_t *list,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+json_node_t rule_type_to_json(const rule_type_t *value, json_pool_t *pool);
+
+json_node_t file_list_to_json(const file_list_t *value, json_pool_t *pool);
+
+json_node_t string_builder_to_json(const string_builder_t *value, json_pool_t *pool);
+
+json_node_t dependency_index_to_json(const unsigned int *value, json_pool_t *pool);
+
+json_node_t dependency_list_to_json(const dependency_list_t *value, json_pool_t *pool);
+
+json_node_t compiler_options_to_json(const compiler_options_t *value, json_pool_t *pool);
+
+json_node_t compiler_switches_bits_to_json(const compiler_switches_bits_t *value, json_pool_t *pool);
+
+json_node_t compiler_switches_to_json(const compiler_switches_t *value, json_pool_t *pool);
+
+json_node_t compiler_warning_level_to_json(const compiler_warning_level_t *value, json_pool_t *pool);
+
+json_node_t compiler_optimization_level_to_json(const compiler_optimization_level_t *value, json_pool_t *pool);
+
+json_node_t preprocessor_arguments_to_json(const preprocessor_arguments_t *value, json_pool_t *pool);
+
+json_node_t preprocessor_definition_list_to_json(const preprocessor_definition_list_t *value, json_pool_t *pool);
+
+json_node_t preprocessor_definition_to_json(const preprocessor_definition_t *value, json_pool_t *pool);
+
+json_node_t linker_arguments_to_json(const linker_arguments_t *value, json_pool_t *pool);
+
+json_node_t rule_to_json(const rule_t *value, json_pool_t *pool);
+
+json_node_t rule_list_to_json(const rule_list_t *value, json_pool_t *pool);
 
 #define TYPE_0 file_list_t
 #define TYPE_1 string_builder_t

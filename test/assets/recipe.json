@@ -73,7 +73,9 @@
             ],
             "sources": [
                 "rule.c",
+                "rule-from-json.c",
                 "project.c",
+                "project-from-json.c",
                 "compilation.c"
             ],
             "depends": [
