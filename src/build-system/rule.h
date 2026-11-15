@@ -39,9 +39,116 @@ typedef struct preprocessor_arguments preprocessor_arguments_t;
 typedef struct preprocessor_definition preprocessor_definition_t;
 typedef struct preprocessor_definition_list preprocessor_definition_list_t;
 typedef struct linker_arguments linker_arguments_t;
+typedef struct compiler_options compiler_options_t;
 typedef struct flags_list flags_list_t;
 typedef struct compiler compiler_t;
 typedef struct build_context build_context_t;
+
+typedef unsigned int compiler_switches_t;
+
+typedef enum compiler_switches_bits {
+
+    /**
+     * Emit debug information in the final objects.
+     */
+    COMPILER_EMIT_DEBUG_SYMBOLS = 0x1,
+
+    /**
+     * Fail compilation if the compiler detects a warning.
+     */
+    COMPILER_TREAT_WARNINGS_AS_ERRORS = 0x2,
+
+    /**
+     * Generate position independent code.
+     */
+    COMPILER_PIC = 0x4,
+
+    /**
+     * Also generate assembly files as a part of the
+     * build process.
+     */
+    COMPILER_EMIT_ASSEMBLY = 0x8,
+
+    /**
+     * Also generate preprocessed source files as a part
+     * of the build process.
+     */
+    COMPILER_EMIT_PREPROCESSED = 0x10,
+
+    /**
+     * Write a JSON file containing the rule list that was
+     * used to build the project.
+     */
+    COMPILER_EMIT_RULE_LIST = 0x20,
+
+} compiler_switches_bits_t;
+
+typedef enum compiler_warning_level {
+
+    /**
+     * Disable warnings
+     */
+    COMPILER_WARNINGS_OFF = 0,
+
+    /**
+     * Use the base level of warnings
+     */
+    COMPILER_WARNINGS_BASIC = 1,
+
+    /**
+     * Apply some additional warnings
+     */
+    COMPILER_WARNINGS_MODERATE = 2,
+
+    /**
+     * Enable stricter warnings and diagnostics
+     */
+    COMPILER_WARNINGS_STRICT = 3,
+
+    /**
+     * All warnings, including pedantic/annoying ones
+     */
+    COMPILER_WARNINGS_PEDANTIC = 4,
+
+} compiler_warning_level_t;
+
+typedef enum compiler_optimization_level {
+    
+    /**
+     * Disable optimization
+     */
+    COMPILER_OPTIMIZATION_OFF = 0,
+
+    /**
+     * Apply some minor compiler optimizations
+     */
+    COMPILER_OPTIMIZATION_LOW = 1,
+
+    /**
+     * Apply the base level of optimizations
+     */
+    COMPILER_OPTIMIZATION_MODERATE = 2,
+
+    /**
+     * Higher-level of optimization
+     */
+    COMPILER_OPTIMIZATION_HIGH = 3,
+
+    /**
+     * Highest level of optimization that does not change
+     * the behavior of the program. Compilation time may
+     * be slower.
+     */
+    COMPILER_OPTIMIZATION_ADVANCED = 4,
+    
+    /**
+     * Use the highest level of optimization, and also
+     * apply optimizations that could affect the control
+     * flow of the program.
+     */
+    COMPILER_OPTIMIZATION_UNSAFE = 5,
+
+} compiler_optimization_level_t;
 
 typedef enum rule_type {
     RULE_EXECUTABLE,
@@ -116,6 +223,34 @@ struct linker_arguments {
     file_list_t libraries;
 };
 
+struct compiler_options {
+    
+    /**
+     * General compilation features to enable.
+     */
+    compiler_switches_t switches;
+
+    /**
+     * Abstract warning level of the compiler.
+     */
+    compiler_warning_level_t warnings;
+
+    /**
+     * Abstract optimization level of the compiler.
+     */
+    compiler_optimization_level_t optimization;
+
+    /**
+     * Arguments passed to the preprocessor.
+     */
+    preprocessor_arguments_t preprocessor;
+
+    /**
+     * Arguments passed to the linker.
+     */
+    linker_arguments_t linker;
+};
+
 struct flags_list {
     size_t count;
     size_t capacity;
@@ -152,14 +287,9 @@ struct rule {
     dependency_list_t depends;
     
     /**
-     * Generic C-linker arguments.
+     * Options to pass to the different compilation phases.
      */
-    linker_arguments_t linker;
-    
-    /**
-     * Generic C-preprocessor arguments.
-     */
-    preprocessor_arguments_t preprocessor;
+    compiler_options_t options;
 
     /**
      * Pointer to an allocator that will be used by operations on

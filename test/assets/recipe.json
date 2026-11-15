@@ -1,0 +1,132 @@
+{
+    "source-directories": [
+        "src"
+    ],
+    "test-directories": [
+        "test"
+    ],
+    "targets": [
+        {
+            "type": "static-library",
+            "name": "cobweb.allocators",
+            "output": "libcobweb-allocators.a", 
+            "sources": [
+                "allocator.c",
+                "arena_allocator.c",
+                "auto_free.c",
+                "scratch_allocator.c"
+            ]
+        },
+        {
+            "type": "static-library",
+            "name": "cobweb.strings",
+            "output": "libcobweb-strings.a",  
+            "sources": [
+                "string_builder.c",
+                "string_view.c",
+                "sv_read.c",
+                "format.c"
+            ],
+            "tests": [
+                "string_builder.c"
+            ],
+            "depends": [
+                "cobweb.allocators"
+            ]
+        },
+        {
+            "type": "static-library",
+            "name": "cobweb.system",
+            "output": "libcobweb-system.a",
+            "sources": [
+                "command_builder.c",
+                "env.c"
+            ],
+            "depends": [
+                "cobweb.allocators",
+                "cobweb.strings"
+            ]
+        },
+        {
+            "type": "static-library",
+            "name": "cobweb.json",
+            "output": "libcobweb-json.a",
+            "sources": [
+                "json.c",
+                "json_parse.c",
+                "json_value_parser.c"
+            ],
+            "depends": [
+                "cobweb.allocators",
+                "cobweb.strings"
+            ],
+            "tests": [
+                "json.c"
+            ]
+        },
+        {
+            "type": "static-library",
+            "name": "cobweb.build",
+            "output": "libcobweb-build.a",
+            "source-directories": [
+                "src/build-system"
+            ],
+            "sources": [
+                "rule.c",
+                "project.c",
+                "compilation.c"
+            ],
+            "depends": [
+                "cobweb.allocators",
+                "cobweb.strings",
+                "cobweb.system",
+                "cobweb.json"
+            ],
+            "tests": [
+                "rule.c"
+            ]
+        },
+        {
+            "type": "static-library",
+            "name": "cobweb.concurrency",
+            "output": "libcobweb-concurrency.a",
+            "source-directories": [
+                "src/concurrency"
+            ],
+            "sources": [
+                "thread.c",
+                "promise.c",
+                "sync.c"
+            ],
+            "tests": [
+                "thread.c",
+                "thread_suspend.c",
+                "semaphore.c",
+                "condition_variable.c",
+                "fence.c",
+                "mutex.c"
+            ],
+            "depends": [
+                "cobweb.allocators",
+                "cobweb.strings"
+            ]
+        }
+    ],
+    "options": {
+        "preprocessor": {
+            "includes": [
+                "src"
+            ]
+        },
+        "warnings": "pedantic",
+        "optimization": "off",
+        "switches": [
+            "warnings-as-errors",
+            "emit-debug-symbols",
+            "emit-assembly",
+            "emit-preprocessed",
+            "emit-rule-list"
+        ]
+    }
+}
+
