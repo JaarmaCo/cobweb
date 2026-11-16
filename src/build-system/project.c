@@ -209,13 +209,15 @@ static bool add_to_transitive_includes(const build_target_t *target, const build
         return false;
     }
 
-    string_builder_t dep_name = {.allocator = context->allocator};
-    sb_append_sv(&dep_name, sb_view(&dep->name));
-    if (!target_dependency_map_insert(includes, dep_name, 1)) {
-        // Already present 
-        ++target_dependency_map_find(includes, dep_name)->value;
-        sb_destroy(&dep_name);
-        return true;
+    {
+        string_builder_t dep_name = {.allocator = context->allocator};
+        sb_append_sv(&dep_name, sb_view(&dep->name));
+        if (!target_dependency_map_insert(includes, dep_name, 1)) {
+            // Already present 
+            ++target_dependency_map_find(includes, dep_name)->value;
+            sb_destroy(&dep_name);
+            return true;
+        }
     }
 
     // Recurse to transitive dependencies
@@ -270,7 +272,6 @@ static bool process_dependency(const string_builder_t *dep_name,
     {
     case RULE_OBJECT:
     case RULE_STATIC_LIBRARY:
-    {
         // Skip if already provided by another dependency
         for (size_t i = 0; i < args->target->depends.count; ++i) {
 
@@ -285,10 +286,11 @@ static bool process_dependency(const string_builder_t *dep_name,
             }
         }
 
-        string_builder_t sb = {.allocator = args->context->allocator};
-        sb_append_sv(&sb, sb_view(&dep_target->output));
-        file_list_append(args->dep_files, sb);
-    }
+        {
+            string_builder_t sb = {.allocator = args->context->allocator};
+            sb_append_sv(&sb, sb_view(&dep_target->output));
+            file_list_append(args->dep_files, sb);
+        }
         break;
     case RULE_DYNAMIC_LIBRARY: {
 
@@ -453,8 +455,10 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
         }
 
         for (size_t i = 0; i < local_dep_list.count; ++i) {
+            
             unsigned int dep_index = local_dep_list.items[i];
             rule_t *dep = &rules->items[dep_index - 1];
+            
             string_builder_t file = {.allocator = context->allocator};
             sb_append_sv(&file, sb_view(&dep->output));
             file_list_append(&rule.input, file);
@@ -523,7 +527,6 @@ void project_generator_context_destroy(project_generator_context_t *context) {
     if (!context) {
         return;
     }
-
     target_dependency_map_destroy(&context->completed_targets);
     target_dependency_map_destroy(&context->indexed_targets);
     target_dependency_map_destroy(&context->artifact_rules);

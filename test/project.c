@@ -80,6 +80,7 @@ void emitting(allocator_t *allocator) {
     }
 
     cmd_ensure_directory("test-out");
+    
     FILE *out = fopen("test-out/project-rules-out.json", "w");
     if (!out) {
         fprintf(stderr, ERR("Failed to open output file."));
