@@ -162,11 +162,11 @@ static bool implied_by_transitive_dependency(const string_builder_t *target_name
         const string_builder_t *dep_name,
         project_generator_context_t *context) {
     
-    dependency_link_t *link = dependency_link_map_find(&context->links, *dep_name);
+    dependency_link_t *link = dependency_link_map_find(&context->links, *target_name);
     if (!link) {
         return false;
     }
-    return NULL != target_dependency_map_find(&link->value, *target_name);
+    return NULL != target_dependency_map_find(&link->value, *dep_name);
 }
 
 // Mark dep as an immediate or transitive dependency of target
