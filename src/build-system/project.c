@@ -337,10 +337,10 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
         rule.output.allocator = context->allocator;
         
         {
-            size_t dot = sv_rfind_char(sb_view(&source_name), '.', 0);
-            string_view_t source_name_base = sv_take(sb_view(&source_name),
+            size_t dot = sv_rfind_char(sb_view(&target->sources.items[i]), '.', 0);
+            string_view_t source_name_base = sv_take(sb_view(&target->sources.items[i]),
                     dot == SIZE_MAX ? source_name.count : dot);
-            
+
             sb_format(&rule.output, "%.*s.o",
                     (int)source_name_base.count, source_name_base.items);
         }
