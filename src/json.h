@@ -112,11 +112,11 @@
 
 #define JSON_FLAGS_TO_JSON_IMPLEMENTATION(F, E, ...) \
     json_node_t array = json_new_array(pool);\
-    string_builder_t sb = {.allocator = pool->allocator};\
     const E VALUES[] = { M_FOREACH(JSON_FLAGS_TO_JSON_VALS_, __VA_ARGS__) };\
     char const *const STRINGS[] = { M_FOREACH(JSON_FLAGS_TO_JSON_STRS_, __VA_ARGS__) };\
     for (size_t i = 0; i < sizeof VALUES / sizeof VALUES[0]; ++i) {\
         if ((*value & VALUES[i]) == VALUES[i]) {\
+            string_builder_t sb = {.allocator = pool->allocator};\
             sb_append_cstr(&sb, STRINGS[i]);\
             json_append(array, json_new_string(pool, sb));\
         }\
