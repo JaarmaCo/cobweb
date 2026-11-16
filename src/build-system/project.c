@@ -8,7 +8,10 @@ static void index_build_target(const build_target_t *target, const build_project
 
     string_builder_t sb = {.allocator = context->allocator};
     sb_append_sv(&sb, sb_view(&target->name));
-    target_dependency_map_insert(&context->indexed_targets, sb, (unsigned int)(target - project->targets.items) + 1);
+    
+    if (!target_dependency_map_insert(&context->indexed_targets, sb, (unsigned int)(target - project->targets.items) + 1)) {
+        sb_destroy(&sb);
+    }
 }
 
 static build_target_t *query_build_target(const string_builder_t *name,
@@ -320,21 +323,7 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
         rule_list_t *rules, project_generator_context_t *context) {
 
     unsigned int index = 0;
-
-    if (context->dependency_depth >= RULE_MAX_DEPENDENCY_DEPTH) {
-        fputs("Maxium dependency depth reached. Possibly a cycle.\n", context->status);
-        return 0;
-    }
-
-    {
-        target_dependency_t *dep = target_dependency_map_find(&context->completed_targets, target->name);
-        if (dep) {
-            // Already generated, do nothing.
-            index = dep->value;
-            goto defer;
-        }
-    }
-
+    
     // List of all-round dependencies
     dependency_list_t dep_list = {.allocator = context->allocator};
     
@@ -346,6 +335,20 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
 
     // Compiler options to inherit for all target rules
     compiler_options_t dep_options = compiler_options(context->allocator); 
+
+    if (context->dependency_depth >= RULE_MAX_DEPENDENCY_DEPTH) {
+        fputs("Maxium dependency depth reached. Possibly a cycle.\n", context->status);
+        goto defer;
+    }
+
+    {
+        target_dependency_t *dep = target_dependency_map_find(&context->completed_targets, target->name);
+        if (dep) {
+            // Already generated, do nothing.
+            index = dep->value;
+            goto defer;
+        }
+    }
 
     compiler_options_inherit(&dep_options, &project->options, context->allocator);
     compiler_options_inherit(&dep_options, &target->options.internal, context->allocator);
