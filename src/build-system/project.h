@@ -157,6 +157,8 @@ struct project_generator_context {
     target_dependency_map_t completed_targets;
 };
 
+project_generator_context_t project_generator_context(allocator_t *allocator);
+
 /**
  * Generate a rule list based on the provided project description.
  */
@@ -173,6 +175,8 @@ void build_target_destroy(build_target_t *value);
 void build_target_list_destroy(build_target_list_t *value);
 
 void build_project_destroy(build_project_t *value);
+
+void project_generator_context_destroy(project_generator_context_t *context);
 
 bool target_compiler_options_from_json(target_compiler_options_t *value, 
     json_node_t json, FILE *status, allocator_t *allocator);

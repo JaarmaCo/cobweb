@@ -3,12 +3,30 @@
 #include "command_builder.h"
 #include "string_builder.h"
 
+project_generator_context_t project_generator_context(allocator_t *allocator) {
+    project_generator_context_t context = {
+        .allocator = allocator,
+        .indexed_targets = {
+            .allocator = allocator,
+        },
+        .artifact_rules = {
+            .allocator = allocator,
+        },
+        .completed_targets = {
+            .allocator = allocator,
+        },
+        .status = stderr,
+        .dependency_depth = 0,
+    };
+    return context;
+}
+
 static void index_build_target(const build_target_t *target, const build_project_t *project,
         project_generator_context_t *context) {
 
     string_builder_t sb = {.allocator = context->allocator};
     sb_append_sv(&sb, sb_view(&target->name));
-    target_dependency_map_insert(&context->indexed_targets, sb, (unsigned int)(project->targets.items - target) + 1);
+    target_dependency_map_insert(&context->indexed_targets, sb, (unsigned int)(target - project->targets.items) + 1);
 }
 
 static build_target_t *query_build_target(const string_builder_t *name,
@@ -16,6 +34,7 @@ static build_target_t *query_build_target(const string_builder_t *name,
 
     target_dependency_t *existing = target_dependency_map_find(&context->indexed_targets, *name);
     if (existing) {
+        assert(existing->value > 0 && existing->value <= project->targets.count);
         return &project->targets.items[existing->value - 1];
     }
 
@@ -129,7 +148,7 @@ static void compiler_options_inherit(compiler_options_t *dest, const compiler_op
 }
 
 static bool locate_target_source_file(string_builder_t *absolute,
-        const build_target_t *target, const string_builder_t *source_name) {
+        const build_target_t *target, const build_project_t *project, const string_builder_t *source_name) {
     
     absolute->count = 0;
     if (cmd_file_exists(source_name->items)) {
@@ -149,6 +168,20 @@ static bool locate_target_source_file(string_builder_t *absolute,
             return true;
         }
     }
+
+    for (size_t i = 0; i < project->source_directories.count; ++i) {
+        absolute->count = 0;
+        string_view_t dir = sb_view(&project->source_directories.items[i]);
+        sb_append_sv(absolute, dir);
+        if (!sv_ends_with_char(dir, '/')) {
+            sb_append_char(absolute, '/');
+        }
+        sb_append_sv(absolute, sb_view(source_name));
+        if (cmd_file_exists(absolute->items)) {
+            return true;
+        }
+    }
+
     absolute->count = 0;
     return false;
 }
@@ -179,6 +212,7 @@ static unsigned int target_define_rule(const build_target_t *target, const rule_
         rule_list_t *rules, project_generator_context_t *context) {
     
     rule_list_append(rules, *rule);
+    assert(rules->count != 0);
 
     unsigned int index = (unsigned int)rules->count;
     string_builder_t resource_name = {.allocator = context->allocator};
@@ -287,7 +321,7 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
     // Add rules for intermediate files
     for (size_t i = 0; i < target->sources.count; ++i) {
         string_builder_t source_name = {.allocator = context->allocator};
-        if (!locate_target_source_file(&source_name, target, &target->sources.items[i])) {
+        if (!locate_target_source_file(&source_name, target, project, &target->sources.items[i])) {
             fprintf(stderr,
                     "Could not find source file %.*s required by target %.*s\n",
                     (int)target->sources.items[i].count, target->sources.items[i].items,
@@ -422,6 +456,16 @@ void build_project_destroy(build_project_t *value) {
     file_list_destroy(&value->test_directories);
     compiler_options_destroy(&value->options);
     build_target_list_destroy(&value->targets);
+}
+
+void project_generator_context_destroy(project_generator_context_t *context) {
+    if (!context) {
+        return;
+    }
+
+    target_dependency_map_destroy(&context->completed_targets);
+    target_dependency_map_destroy(&context->indexed_targets);
+    target_dependency_map_destroy(&context->artifact_rules);
 }
 
 #define TYPE_0 build_target_list_t

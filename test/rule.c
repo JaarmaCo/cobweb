@@ -30,20 +30,21 @@ void parsing_rules(allocator_t *allocator) {
     json_node_t json = json_load(&pool, f);
     fclose(f);
 
-    fprintf(stderr, INFO("Input:"));
-    json_pretty_print(json, 2, 1, stderr);
-
-    fputc('\n', stderr);
-
     if (!rule_list_from_json(&rules, json, stdout, allocator)) {
         fprintf(stderr, ERR("Trusted test asset failed to parse."));
         exit(1);
     }
 
-    fprintf(stderr, INFO("Output:"));
-    json_pretty_print(rule_list_to_json(&rules, &pool), 2, 1, stderr);
+    cmd_ensure_directory("test-out");
+    FILE *out = fopen("test-out/rule-out.json", "w");
+    if (!out) {
+        fprintf(stderr, ERR("Failed to open output file."));
+        exit(1);
+    }
 
-    fputc('\n', stderr);
+    json_pretty_print(rule_list_to_json(&rules, &pool), 2, 1, out);
+    fputc('\n', out);
+    fclose(out);
 
     json_destroy_pool(&pool);
     rule_list_destroy(&rules);
