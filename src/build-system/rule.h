@@ -407,6 +407,15 @@ void linker_arguments_destroy(linker_arguments_t *arguments);
 
 void compiler_options_destroy(compiler_options_t *options);
 
+void preprocessor_arguments_inherit(preprocessor_arguments_t *dest, const preprocessor_arguments_t *src,
+        allocator_t *allocator);
+
+void linker_arguments_inherit(linker_arguments_t *dest, const linker_arguments_t *src,
+        allocator_t *allocator);
+
+void compiler_options_inherit(compiler_options_t *dest, const compiler_options_t *src,
+        allocator_t *allocator);
+
 void rule_destroy(rule_t *rule);
 
 static inline compiler_options_t compiler_options(allocator_t *allocator) {

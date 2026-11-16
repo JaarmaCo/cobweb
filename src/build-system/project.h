@@ -9,6 +9,8 @@ typedef struct target_compiler_options target_compiler_options_t;
 typedef struct project_generator_context project_generator_context_t;
 typedef struct target_dependency target_dependency_t;
 typedef struct target_dependency_map target_dependency_map_t;
+typedef struct dependency_link dependency_link_t;
+typedef struct dependency_link_map dependency_link_map_t;
 
 struct target_compiler_options {
     
@@ -124,6 +126,19 @@ struct target_dependency_map {
     allocator_t *allocator;
 };
 
+struct dependency_link {
+    size_t hash;
+    string_builder_t key;
+    target_dependency_map_t value;
+};
+
+struct dependency_link_map {
+    size_t count;
+    size_t capacity;
+    dependency_link_t *items;
+    allocator_t *allocator;
+};
+
 struct project_generator_context {
    
     /**
@@ -155,9 +170,33 @@ struct project_generator_context {
      * Map of targets that are already added
      */
     target_dependency_map_t completed_targets;
+
+    /**
+     * Links names to the transitive dependencies they imply
+     */
+    dependency_link_map_t links;
 };
 
-project_generator_context_t project_generator_context(allocator_t *allocator);
+static inline project_generator_context_t project_generator_context(allocator_t *allocator) {
+    project_generator_context_t context = {
+        .allocator = allocator,
+        .indexed_targets = {
+            .allocator = allocator,
+        },
+        .artifact_rules = {
+            .allocator = allocator,
+        },
+        .completed_targets = {
+            .allocator = allocator,
+        },
+        .links = {
+            .allocator = allocator,
+        },
+        .status = stderr,
+        .dependency_depth = 0,
+    };
+    return context;
+}
 
 /**
  * Generate a rule list based on the provided project description.
@@ -214,6 +253,18 @@ json_node_t build_project_to_json(const build_project_t *value, json_pool_t *poo
 #define FUNCTION_1(k) sv_hash(sb_view(&k))
 #define FUNCTION_2(x, y) sv_equals(sb_view(&x), sb_view(&y))
 #define PREFIX target_dependency_map_
+#define SUFFIX
+#define C_HEADER
+#include "../hashmap.h"
+
+#define TYPE_0 dependency_link_map_t
+#define TYPE_1 dependency_link_t
+#define TYPE_2 string_builder_t
+#define TYPE_3 target_dependency_map_t
+#define FUNCTION_0(e) do { sb_destroy(&(e)->key); target_dependency_map_destroy(&(e)->value); } while(0)
+#define FUNCTION_1(k) sv_hash(sb_view(&k))
+#define FUNCTION_2(x, y) sv_equals(sb_view(&x), sb_view(&y))
+#define PREFIX dependency_link_map_
 #define SUFFIX
 #define C_HEADER
 #include "../hashmap.h"

@@ -3,6 +3,61 @@
 #include "rule.h"
 #include "compilation.h"
 
+void preprocessor_arguments_inherit(preprocessor_arguments_t *dest, const preprocessor_arguments_t *src,
+        allocator_t *allocator) {
+    
+    for (size_t i = 0; i < src->includes.count; ++i) {
+        string_builder_t sb = {.allocator = allocator};
+        sb_append_sv(&sb, sb_view(&src->includes.items[i]));
+        file_list_append(&dest->includes, sb);
+    }
+    
+    for (size_t i = 0; i < src->definitions.count; ++i) {
+        preprocessor_definition_t def = {
+            .symbol = {.allocator = allocator},
+            .expansion = {.allocator = allocator},
+        };
+        sb_append_sv(&def.symbol, sb_view(&src->definitions.items[i].symbol));
+        sb_append_sv(&def.expansion, sb_view(&src->definitions.items[i].expansion));
+        define_list_append(&dest->definitions, def);
+    }
+}
+
+void linker_arguments_inherit(linker_arguments_t *dest, const linker_arguments_t *src,
+        allocator_t *allocator) {
+    
+    dest->rpath.allocator = allocator;
+    sb_append_sv(&dest->rpath, sb_view(&src->rpath));
+
+    for (size_t i = 0; i < src->libraries.count; ++i) {
+        string_builder_t sb = {.allocator = allocator};
+        sb_append_sv(&sb, sb_view(&src->libraries.items[i]));
+        file_list_append(&dest->libraries, sb);
+    }
+    
+    for (size_t i = 0; i < src->directories.count; ++i) {
+        string_builder_t sb = {.allocator = allocator};
+        sb_append_sv(&sb, sb_view(&src->directories.items[i]));
+        file_list_append(&dest->directories, sb);
+    }       
+}
+
+void compiler_options_inherit(compiler_options_t *dest, const compiler_options_t *src,
+        allocator_t *allocator) {
+
+    if (src->optimization > dest->optimization) {
+        dest->optimization = src->optimization;
+    }
+
+    if (src->warnings > dest->warnings) {
+        dest->warnings = src->warnings;
+    }
+
+    dest->switches |= src->switches;
+    preprocessor_arguments_inherit(&dest->preprocessor, &src->preprocessor, allocator);
+    linker_arguments_inherit(&dest->linker, &src->linker, allocator);
+}
+
 void preprocessor_arguments_destroy(preprocessor_arguments_t *arguments) {
     if (!arguments) {
         return;
