@@ -44,6 +44,7 @@ void parsing(allocator_t *allocator) {
     json_pretty_print(serialized, 2, 1, out);
     fputc('\n', out);
     fclose(out);
+    fprintf(stderr, INFO("Wrote: test-out/project-out.json"));
 
     json_destroy_pool(&pool);
     build_project_destroy(&project);
@@ -88,6 +89,7 @@ void emitting(allocator_t *allocator) {
     json_pretty_print(rule_list_to_json(&rules, &pool), 2, 1, out);
     fputc('\n', out);
     fclose(out);
+    fprintf(stderr, INFO("Wrote: test-out/project-rules-out.json"));
    
     project_generator_context_destroy(&context);
     json_destroy_pool(&pool);

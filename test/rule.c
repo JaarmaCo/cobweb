@@ -45,6 +45,7 @@ void parsing_rules(allocator_t *allocator) {
     json_pretty_print(rule_list_to_json(&rules, &pool), 2, 1, out);
     fputc('\n', out);
     fclose(out);
+    fprintf(stderr, INFO("Wrote: test-out/rule-out.json"));
 
     json_destroy_pool(&pool);
     rule_list_destroy(&rules);

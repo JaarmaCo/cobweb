@@ -198,11 +198,11 @@ json_node_t dependency_list_to_json(const dependency_list_t *value, json_pool_t 
 
 json_node_t compiler_options_to_json(const compiler_options_t *value, json_pool_t *pool) {
     JSON_OBJECT_TO_JSON_IMPLEMENTATION(
-            (compiler_switches, switches, "switches"),
-            (compiler_warning_level, warnings, "warnings"),
-            (compiler_optimization_level, optimization, "optimization"),
-            (preprocessor_arguments, preprocessor, "preprocessor"),
-            (linker_arguments, linker, "linker"));
+            (compiler_switches, switches, "switches", T),
+            (compiler_warning_level, warnings, "warnings", T),
+            (compiler_optimization_level, optimization, "optimization", T),
+            (preprocessor_arguments, preprocessor, "preprocessor", T),
+            (linker_arguments, linker, "linker", T));
 }
 
 json_node_t compiler_switches_bits_to_json(const compiler_switches_bits_t *value, json_pool_t *pool) {
@@ -251,8 +251,8 @@ json_node_t compiler_optimization_level_to_json(const compiler_optimization_leve
 json_node_t preprocessor_arguments_to_json(const preprocessor_arguments_t *value, json_pool_t *pool) {
 
     JSON_OBJECT_TO_JSON_IMPLEMENTATION(
-            (file_list, includes, "includes"),
-            (preprocessor_definition_list, definitions, "definitions"));
+            (file_list, includes, "includes", T),
+            (preprocessor_definition_list, definitions, "definitions", T));
 }
 
 json_node_t preprocessor_definition_list_to_json(const preprocessor_definition_list_t *value, json_pool_t *pool) {
@@ -262,26 +262,26 @@ json_node_t preprocessor_definition_list_to_json(const preprocessor_definition_l
 json_node_t preprocessor_definition_to_json(const preprocessor_definition_t *value, json_pool_t *pool) {
 
     JSON_OBJECT_TO_JSON_IMPLEMENTATION(
-            (string_builder, symbol, "symbol"),
-            (string_builder, expansion, "expansion"));
+            (string_builder, symbol, "symbol", F),
+            (string_builder, expansion, "expansion", T));
 }
 
 json_node_t linker_arguments_to_json(const linker_arguments_t *value, json_pool_t *pool) {
 
     JSON_OBJECT_TO_JSON_IMPLEMENTATION(
-            (string_builder, rpath, "rpath"),
-            (file_list, directories, "directories"),
-            (file_list, libraries, "libraries"));
+            (string_builder, rpath, "rpath", T),
+            (file_list, directories, "directories", T),
+            (file_list, libraries, "libraries", T));
 }
 
 json_node_t rule_to_json(const rule_t *value, json_pool_t *pool) {
 
     JSON_OBJECT_TO_JSON_IMPLEMENTATION(
-            (rule_type, type, "type"),
-            (file_list, input, "input"),
-            (string_builder, output, "output"),
-            (dependency_list, depends, "depends"),
-            (compiler_options, options, "options"));
+            (rule_type, type, "type", F),
+            (file_list, input, "input", F),
+            (string_builder, output, "output", F),
+            (dependency_list, depends, "depends", T),
+            (compiler_options, options, "options", T));
 }
 
 json_node_t rule_list_to_json(const rule_list_t *value, json_pool_t *pool) {

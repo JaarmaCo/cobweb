@@ -179,7 +179,13 @@ err:\
 #define JSON_OBJECT_TO_JSON_FE_(I, Fst, Lst, It) \
     {\
         json_node_t node = M_CAT(M_FST(It), _to_json)(&value->M_SND(It), pool);\
-        json_put(object, SV(M_THD(It)), node);\
+        M_IF(M_4TH(It), (\
+            if (!json_is_null_or_empty(node)) {\
+                json_put(object, SV(M_THD(It)), node);\
+            }\
+        ), (\
+            json_put(object, SV(M_THD(It)), node);\
+        ))\
     }
 
 #define JSON_OBJECT_TO_JSON_IMPLEMENTATION(...)\
@@ -542,6 +548,11 @@ json_node_t json_new_object(json_pool_t *pool);
  * @return The number of JSON elements in the array or object node.
  */
 size_t json_count(json_node_t node);
+
+/**
+ * Test whether a JSON node is null, or an empty object/array/string.
+ */
+bool json_is_null_or_empty(json_node_t node);
 
 /**
  * Iterates over every property in a json object.
