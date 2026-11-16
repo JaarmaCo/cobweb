@@ -217,6 +217,12 @@ void build_project_destroy(build_project_t *value);
 
 void project_generator_context_destroy(project_generator_context_t *context);
 
+bool target_dependency_map_from_json(target_dependency_map_t *value,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
+bool dependency_link_map_from_json(dependency_link_map_t *value,
+        json_node_t json, FILE *status, allocator_t *allocator);
+
 bool target_compiler_options_from_json(target_compiler_options_t *value, 
     json_node_t json, FILE *status, allocator_t *allocator);
 
@@ -228,6 +234,10 @@ bool build_target_list_from_json(build_target_list_t *value,
 
 bool build_project_from_json(build_project_t *value,
     json_node_t json, FILE *status, allocator_t *allocator);
+
+json_node_t target_dependency_map_to_json(const target_dependency_map_t *value, json_pool_t *pool);
+
+json_node_t dependency_link_map_to_json(const dependency_link_map_t *value, json_pool_t *pool);
 
 json_node_t target_compiler_options_to_json(const target_compiler_options_t *value, json_pool_t *pool);
 

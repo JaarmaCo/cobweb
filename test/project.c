@@ -90,7 +90,18 @@ void emitting(allocator_t *allocator) {
     fputc('\n', out);
     fclose(out);
     fprintf(stderr, INFO("Wrote: test-out/project-rules-out.json"));
-   
+
+    out = fopen("test-out/project-dependency-graph.json", "w");
+    if (!out) {
+        fprintf(stderr, ERR("Failed to open output file."));
+        exit(1);
+    }
+
+    json_pretty_print(dependency_link_map_to_json(&context.links, &pool), 2, 1, out);
+    fputc('\n', out);
+    fclose(out);
+    fprintf(stderr, INFO("Wrote: test-out/project-dependency-graph.json"));
+
     project_generator_context_destroy(&context);
     json_destroy_pool(&pool);
     rule_list_destroy(&rules);

@@ -193,6 +193,38 @@ err:\
     M_FOREACH(JSON_OBJECT_TO_JSON_FE_, __VA_ARGS__)\
     return object
 
+#define JSON_STRING_MAP_FROM_JSON_IMPLEMENTATION(S, K, V, VName, KeyCopy, Insert)\
+    size_t state = 0;\
+    string_view_t key;\
+    json_node_t child;\
+    while (json_iterate_properties(json, &state, &key, &child)) {\
+        V y;\
+        if (!VName##_from_json(&y, child, status, allocator)) {\
+            fprintf(status, "When parsing property \"%.*s\" (" #S ")\n",\
+                    (int)key.count,\
+                    key.items);\
+            return false;\
+        }\
+        K x = {.allocator = allocator};\
+        KeyCopy(&x, key);\
+        Insert(value, x, y);\
+    }\
+    return true
+
+#define JSON_STRING_MAP_TO_JSON_IMPLEMENTATION(VName)\
+    json_node_t object = json_new_object(pool);\
+    for (size_t i = 0; i < value->capacity; ++i) {\
+        if (value->items[i].hash == 0) {\
+            continue;\
+        }\
+        string_view_t key = {\
+            .items = value->items[i].key.items,\
+            .count = value->items[i].key.count,\
+        };\
+        json_insert(object, key, VName##_to_json(&value->items[i].value, pool));\
+    }\
+    return object
+
 typedef struct json_object json_object_t;
 typedef struct json_object_entry json_object_entry_t;
 typedef struct json_array json_array_t;

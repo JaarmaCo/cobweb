@@ -211,8 +211,9 @@ static bool add_to_transitive_includes(const build_target_t *target, const build
 
     string_builder_t dep_name = {.allocator = context->allocator};
     sb_append_sv(&dep_name, sb_view(&dep->name));
-    if (!target_dependency_map_insert(includes, dep_name, 0 /* unused */)) {
-        // Already present
+    if (!target_dependency_map_insert(includes, dep_name, 1)) {
+        // Already present 
+        ++target_dependency_map_find(includes, dep_name)->value;
         sb_destroy(&dep_name);
         return true;
     }
