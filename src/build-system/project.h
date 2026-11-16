@@ -206,7 +206,7 @@ json_node_t build_project_to_json(const build_project_t *value, json_pool_t *poo
 #define TYPE_1 target_dependency_t
 #define TYPE_2 string_builder_t
 #define TYPE_3 unsigned int
-#define FUNCTION_0(e) sb_destroy(&e->key)
+#define FUNCTION_0(e) sb_destroy(&(e)->key)
 #define FUNCTION_1(k) sv_hash(sb_view(&k))
 #define FUNCTION_2(x, y) sv_equals(sb_view(&x), sb_view(&y))
 #define PREFIX target_dependency_map_

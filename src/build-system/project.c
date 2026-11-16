@@ -424,5 +424,24 @@ void build_project_destroy(build_project_t *value) {
     build_target_list_destroy(&value->targets);
 }
 
+#define TYPE_0 build_target_list_t
+#define TYPE_1 build_target_t
+#define FUNCTION_0 build_target_destroy
+#define PREFIX build_target_list_
+#define SUFFIX 
+#define C_SOURCE
+#include "../dynamic_array.h"
+
+#define TYPE_0 target_dependency_map_t
+#define TYPE_1 target_dependency_t
+#define TYPE_2 string_builder_t
+#define TYPE_3 unsigned int
+#define FUNCTION_0(e) sb_destroy(&(e)->key)
+#define FUNCTION_1(k) sv_hash(sb_view(&k))
+#define FUNCTION_2(x, y) sv_equals(sb_view(&x), sb_view(&y))
+#define PREFIX target_dependency_map_
+#define SUFFIX
+#define C_SOURCE
+#include "../hashmap.h"
 
 

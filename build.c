@@ -99,6 +99,7 @@
   "fence.c", \
   "thread_suspend.c", \
   "rule.c", \
+  "project.c",\
   /*"concurrent_linked_queue.c",*/\
   NULL
 
