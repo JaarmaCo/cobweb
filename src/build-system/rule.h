@@ -418,6 +418,10 @@ void compiler_options_inherit(compiler_options_t *dest, const compiler_options_t
 
 void rule_destroy(rule_t *rule);
 
+static inline bool rule_type_is_dynamically_linked(rule_type_t type) {
+    return type == RULE_DYNAMIC_LIBRARY || type == RULE_EXECUTABLE;
+}
+
 static inline compiler_options_t compiler_options(allocator_t *allocator) {
     compiler_options_t result = {
         .switches = 0,

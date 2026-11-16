@@ -7,6 +7,18 @@
     ],
     "targets": [
         {
+            "type": "dynamic-library",
+            "name": "cobweb",
+            "depends": [
+                "cobweb.allocators",
+                "cobweb.strings",
+                "cobweb.json",
+                "cobweb.concurrency",
+                "cobweb.system",
+                "cobweb.build"
+            ]
+        },
+        {
             "type": "static-library",
             "name": "cobweb.allocators",
             "output": "libcobweb-allocators.a", 

@@ -249,6 +249,14 @@ static bool process_dependency(const string_builder_t *dep_name,
         struct process_dependency_args *args) {
 
     const build_target_t *dep_target = query_build_target(dep_name, args->project, args->context);
+    if (!dep_target) {
+        fprintf(args->context->status,
+                "Missing dependency %.*s required by target %.*s.\n",
+                (int)dep_name->count, dep_name->items,
+                (int)args->target->name.count, args->target->name.items);
+        return false;
+    }
+
     unsigned int index = add_transitive_dependency(dep_name, args->target, args->project, args->rules, args->context);
     if (index == 0) {
         return false;
@@ -262,10 +270,21 @@ static bool process_dependency(const string_builder_t *dep_name,
     {
     case RULE_OBJECT:
     case RULE_STATIC_LIBRARY:
-    // Unless the statically linked object is already implied through a transitive dependency,
-    // it has to be added to the compiler input file list.
-    if (!implied_by_transitive_dependency(&args->target->name, &dep_target->name, args->context)){
-        
+    {
+        // Skip if already provided by another dependency
+        for (size_t i = 0; i < args->target->depends.count; ++i) {
+
+            const string_builder_t *other_dep_name = &args->target->depends.items[i];
+
+            if (sv_equals(sb_view(dep_name), sb_view(other_dep_name))) {
+                continue;
+            }
+
+            if (implied_by_transitive_dependency(other_dep_name, dep_name, args->context)) {
+                goto skip_switch;
+            }
+        }
+
         string_builder_t sb = {.allocator = args->context->allocator};
         sb_append_sv(&sb, sb_view(&dep_target->output));
         file_list_append(args->dep_files, sb);
@@ -282,6 +301,8 @@ static bool process_dependency(const string_builder_t *dep_name,
     default:
         break;
     }
+skip_switch:
+
     return true;
 }
 
@@ -422,10 +443,13 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
         dep_list_append_range(&rule.depends, dep_list.count, dep_list.items);
         dep_list_append_range(&rule.depends, local_dep_list.count, local_dep_list.items);
 
-        for (size_t i = 0; i < dep_files.count; ++i) {
-            string_builder_t file = {.allocator = context->allocator};
-            sb_append_sv(&file, sb_view(&dep_files.items[i]));
-            file_list_append(&rule.input, file);
+        if (rule_type_is_dynamically_linked(target->type)) {
+            for (size_t i = 0; i < dep_files.count; ++i) {
+
+                string_builder_t file = {.allocator = context->allocator};
+                sb_append_sv(&file, sb_view(&dep_files.items[i]));
+                file_list_append(&rule.input, file);
+            }
         }
 
         for (size_t i = 0; i < local_dep_list.count; ++i) {
