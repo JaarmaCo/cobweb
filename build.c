@@ -70,6 +70,7 @@
   "json.c", \
   "json_parse.c", \
   "json_value_parser.c", \
+  "json_pretty_print.c",\
   "scratch_allocator.c", \
   "stream.c", \
   "string_builder.c", \
@@ -79,6 +80,9 @@
   "concurrency/promise.c", \
   "concurrency/sync.c", \
   "build-system/rule.c",\
+  "build-system/project.c", \
+  "build-system/project-from-json.c",\
+  "build-system/rule-from-json.c",\
   "build-system/compilation.c",\
   NULL
 
@@ -95,6 +99,7 @@
   "fence.c", \
   "thread_suspend.c", \
   "rule.c", \
+  "project.c",\
   /*"concurrent_linked_queue.c",*/\
   NULL
 

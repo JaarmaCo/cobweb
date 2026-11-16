@@ -429,6 +429,22 @@ size_t json_count(json_node_t node) {
   }
 }
 
+bool json_is_null_or_empty(json_node_t node) {
+    switch (node.type)
+    {
+    case JSON_NULL:
+        return true;
+    case JSON_STRING:
+        return json_as_string(node).count == 0;
+    case JSON_ARRAY:
+        return json_as_array(node).count == 0;
+    case JSON_OBJECT:
+        return json_as_object(node).count == 0;
+    default:
+        return false;
+    }
+}
+
 bool json_iterate_properties(json_node_t node, size_t *state,
                              string_view_t *out_key, json_node_t *out_value) {
 

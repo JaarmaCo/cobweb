@@ -3,358 +3,97 @@
 #include "rule.h"
 #include "compilation.h"
 
-static bool rule_input_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *allocator) {
+void preprocessor_arguments_inherit(preprocessor_arguments_t *dest, const preprocessor_arguments_t *src,
+        allocator_t *allocator) {
     
-    json_string_t contents;
-    if (json_get(node, JSON_STRING, &contents)) {
-        string_builder_t s = {.allocator = allocator};
-        sb_append_sv(&s, sb_view(&contents));
-        file_list_append(&rule->input, s);
-        return true;
-    }
-
-    json_array_t array;
-    if (!json_get(node, JSON_ARRAY, &array)) {
-        fputs("\"input\" has to be a string, or an array of strings.\n", status);
-        return false;
-    }
-
-    for (size_t i = 0; i < array.count; ++i) {
-        json_node_t child = array.items[i];
-        if (!json_get(child, JSON_STRING, &contents)) {
-            fprintf(status, "Invalid value at element %zu in \"input\", expected a string.\n", i);
-            return false;
-        }
+    for (size_t i = 0; i < src->includes.count; ++i) {
         string_builder_t sb = {.allocator = allocator};
-        sb_append_sv(&sb, sb_view(&contents));
-        file_list_append(&rule->input, sb);
+        sb_append_sv(&sb, sb_view(&src->includes.items[i]));
+        file_list_append(&dest->includes, sb);
     }
-    return true;
+    
+    for (size_t i = 0; i < src->definitions.count; ++i) {
+        preprocessor_definition_t def = {
+            .symbol = {.allocator = allocator},
+            .expansion = {.allocator = allocator},
+        };
+        sb_append_sv(&def.symbol, sb_view(&src->definitions.items[i].symbol));
+        sb_append_sv(&def.expansion, sb_view(&src->definitions.items[i].expansion));
+        define_list_append(&dest->definitions, def);
+    }
 }
 
-static bool rule_output_from_json(rule_t *rule, json_node_t node, FILE *status) {
+void linker_arguments_inherit(linker_arguments_t *dest, const linker_arguments_t *src,
+        allocator_t *allocator) {
     
-    json_string_t contents;
-    if (json_get(node, JSON_STRING, &contents)) {
-        sb_append_sv(&rule->output, sb_view(&contents)); 
-        return true;
-    }
+    dest->rpath.allocator = allocator;
+    sb_append_sv(&dest->rpath, sb_view(&src->rpath));
 
-    fputs("Expected \"output\" to be a string.\n", status);
-    return false;
-}
-
-static bool rule_flags_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *allocator) {
-    
-    json_array_t array;
-    json_string_t contents;
-    if (!json_get(node, JSON_ARRAY, &array)) {
-        fputs("\"flags\" has to be an array of strings.\n", status);
-        return false;
-    }
-
-    for (size_t i = 0; i < array.count; ++i) {
-        json_node_t child = array.items[i];
-        if (!json_get(child, JSON_STRING, &contents)) {
-            fprintf(status, "Invalid value at element %zu in \"flags\", expected a string.\n", i);
-            return false;
-        }
+    for (size_t i = 0; i < src->libraries.count; ++i) {
         string_builder_t sb = {.allocator = allocator};
-        sb_append_sv(&sb, sb_view(&contents));
-        flags_append(&rule->flags, sb);
+        sb_append_sv(&sb, sb_view(&src->libraries.items[i]));
+        file_list_append(&dest->libraries, sb);
     }
-    return true;
-}
-
-static bool rule_depends_from_json(rule_t *rule, json_node_t node, FILE *status) {
     
-    json_array_t array;
-    json_number_t contents;
-    if (!json_get(node, JSON_ARRAY, &array)) {
-        fputs("\"depends\" has to be an array of integers.\n", status);
-        return false;
-    }
-
-    for (size_t i = 0; i < array.count; ++i) {
-        json_node_t child = array.items[i];
-        if (!json_get(child, JSON_NUMBER, &contents)) {
-            fprintf(status, "Invalid value at element %zu in \"depends\", expected a number.\n", i);
-            return false;
-        }
-
-        if (contents == 0) {
-            fprintf(status, "Dependency indices are 1-indexed, "
-                    "value at position %zu is 0 (in array \"depends\").\n", i);
-            return false;
-        }
-
-        if (contents < 0) {
-            fprintf(status, "Negative dependency index at position %zu in \"depends\".\n", i);
-            return false;
-        }
-
-        if (contents > UINT_MAX) {
-            fprintf(status, "Dependency index exceeds maximum limit at position %zu in \"depends\".\n", i);
-            return false;
-        }
-
-        if ((json_number_t)(unsigned int)contents != contents) {
-            fprintf(status, "Expected an integer at position %zu in \"depends\".\n", i);
-            return false;
-        }
-
-        dep_list_append(&rule->depends, (unsigned int)contents);
-    }
-    return true;
-}
-
-static bool rule_linker_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *allocator) {
-    
-    if (node.type != JSON_OBJECT) {
-        fputs("Expected property \"linker\" to be an object.\n", status);
-        return false;
-    }
-
-    json_string_t string;
-    json_array_t array;
-    json_node_t *child;
-
-    child = json_find(node, SV("rpath"));
-    if (child) {
-        if (!json_get(*child, JSON_STRING, &string)) {
-            fputs("Expected property \"rpath\" of object \"linker\" to be a string.",
-                    status);
-            return false;
-        }
+    for (size_t i = 0; i < src->directories.count; ++i) {
         string_builder_t sb = {.allocator = allocator};
-        sb_append_sv(&sb, sb_view(&string));
-        rule->linker.rpath = sb;
-    }
-
-    child = json_find(node, SV("directories"));
-    if (child) {
-        if (!json_get(*child, JSON_ARRAY, &array)) {
-            fputs("Expected property \"directories\" of object \"linker\" to be an array of strings.\n", status);
-            return false;
-        }
-
-        for (size_t i = 0; i < array.count; ++i) {
-            string_builder_t sb = {.allocator = allocator};
-            if (!json_get(array.items[i], JSON_STRING, &string)) {
-                fprintf(status, "Expected element at position %zu in array "
-                        "\"directories\" of object \"linker\" to be a string.\n", i);
-                return false;
-            }
-            sb_append_sv(&sb, sb_view(&string));
-            file_list_append(&rule->linker.directories, sb);
-        }
-    }
-
-    child = json_find(node, SV("libraries"));
-    if (child) {
-        if (!json_get(*child, JSON_ARRAY, &array)) {
-            fputs("Expected property \"libraries\" of object \"linker\" to be an array of strings.\n", status);
-            return false;
-        }
-
-        for (size_t i = 0; i < array.count; ++i) {
-            string_builder_t sb = {.allocator = allocator};
-            if (!json_get(array.items[i], JSON_STRING, &string)) {
-                fprintf(status, "Expected element at position %zu in array "
-                        "\"libraries\" of object \"linker\" to be a string.\n", i);
-                return false;
-            }
-            sb_append_sv(&sb, sb_view(&string));
-            file_list_append(&rule->linker.libraries, sb);
-        }
-    }
-
-    return true;
+        sb_append_sv(&sb, sb_view(&src->directories.items[i]));
+        file_list_append(&dest->directories, sb);
+    }       
 }
 
-static bool rule_preprocessor_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *allocator) {
-    
-    if (node.type != JSON_OBJECT) {
-        fputs("Expected property \"preprocessor\" to be an object.\n", status);
-        return false;
+void compiler_options_inherit(compiler_options_t *dest, const compiler_options_t *src,
+        allocator_t *allocator) {
+
+    if (src->optimization > dest->optimization) {
+        dest->optimization = src->optimization;
     }
 
-    json_string_t string;
-    json_array_t array;
-    json_node_t *child;
-
-    child = json_find(node, SV("includes"));
-    if (child) {
-        if (!json_get(*child, JSON_ARRAY, &array)) {
-            fputs("Expected property \"includes\" of object \"preprocessor\" to be an array of strings.\n", status);
-            return false;
-        }
-
-        for (size_t i = 0; i < array.count; ++i) {
-            string_builder_t sb = {.allocator = allocator};
-            if (!json_get(array.items[i], JSON_STRING, &string)) {
-                fprintf(status, "Expected element at position %zu in array "
-                        "\"includes\" of object \"preprocessor\" to be a string.\n", i);
-                return false;
-            }
-            sb_append_sv(&sb, sb_view(&string));
-            file_list_append(&rule->preprocessor.includes, sb);
-        }
+    if (src->warnings > dest->warnings) {
+        dest->warnings = src->warnings;
     }
 
-    child = json_find(node, SV("definitions"));
-    if (child) {
-        if (child->type != JSON_OBJECT) {
-            fputs("Expected property \"definitions\" of object \"preprocessor\" "
-                    "to be an object of symbol-expansion pairs.\n", status);
-            return false;
-        }
-
-        size_t state = 0;
-        string_view_t key;
-        json_node_t value;
-        while (json_iterate_properties(*child, &state, &key, &value)) {
-
-            preprocessor_definition_t def = {
-                .symbol = { .allocator = allocator },
-                .expansion = { .allocator = allocator },
-            };
-
-            sb_append_sv(&def.symbol, key);
-
-            if (json_get(value, JSON_STRING, &string)) {
-                sb_append_sv(&def.expansion, sb_view(&string));
-            } else if (value.type != JSON_NULL) {
-                fprintf(status, "Expected property \"%.*s\" of object \"definitions\" "
-                        "in object \"preprocessor\" to be eithr a string or null.\n", 
-                        (int)key.count, key.items);
-                return false;
-            }
-
-            define_list_append(&rule->preprocessor.definitions, def);
-        }
-    }
-    return true;
+    dest->switches |= src->switches;
+    preprocessor_arguments_inherit(&dest->preprocessor, &src->preprocessor, allocator);
+    linker_arguments_inherit(&dest->linker, &src->linker, allocator);
 }
 
-bool rule_from_json(rule_t *rule, json_node_t node, FILE *status, allocator_t *allocator) {
-    
-    if (node.type != JSON_OBJECT) {
-        fputs("Expected the root element to be an object.\n", status);
-        return false;
+void preprocessor_arguments_destroy(preprocessor_arguments_t *arguments) {
+    if (!arguments) {
+        return;
     }
-
-    json_node_t *child;
-    memset(rule, 0, sizeof *rule);
-    
-    allocator = auto_free_allocator(allocator);
-
-    rule->allocator = allocator;
-    rule->input.allocator = allocator;
-    rule->output.allocator = allocator;
-    rule->flags.allocator = allocator;
-    rule->depends.allocator = allocator;
-    rule->linker.rpath.allocator = allocator;
-    rule->linker.directories.allocator = allocator;
-    rule->linker.libraries.allocator = allocator;
-    rule->preprocessor.definitions.allocator = allocator;
-    rule->preprocessor.includes.allocator = allocator;
-
-    child = json_find(node, SV("input"));
-    if (!child) {
-        fputs("Missing required \"input\" property.\n", status);
-        return false;
-    }
-    if (!rule_input_from_json(rule, *child, status, allocator)) {
-        return false;
-    }
-
-    child = json_find(node, SV("output"));
-    if (child) {
-        if (!rule_output_from_json(rule, *child, status)) {
-            return false;
-        }
-    } else {
-        fputs("Missing required property \"output\".\n\n", status);
-        return false;
-    }
-
-    child = json_find(node, SV("type"));
-    if (child) {
-        json_string_t string;
-        if (!json_get(*child, JSON_STRING, &string)) {
-            fputs("Expected property \"type\" to be a string.\n\n", status);
-            return false;
-        }
-        
-        if (sv_equals(sb_view(&string), SV("object"))) {
-            rule->type = RULE_OBJECT;
-        } else if (sv_equals(sb_view(&string), SV("executable"))) {
-            rule->type = RULE_EXECUTABLE;
-        } else if (sv_equals(sb_view(&string), SV("static-library"))) {
-            rule->type = RULE_STATIC_LIBRARY;
-        } else if (sv_equals(sb_view(&string), SV("dynamic-library"))) {
-            rule->type = RULE_DYNAMIC_LIBRARY;
-        } else {
-            fputs("Expected property \"type\" to be one of [ \"object\", "
-                    "\"executable\", \"static-library\", \"dynamic-library\" ].\n", status);
-            return false;
-        }
-
-    } else {
-        fputs("Missing required property \"type\".\n\n", status);
-        return false;
-    }
-
-    child = json_find(node, SV("flags"));
-    if (child) {
-        if (!rule_flags_from_json(rule, *child, status, allocator)) {
-            return false;
-        }
-    }
-
-    child = json_find(node, SV("depends"));
-    if (child) {
-        if (!rule_depends_from_json(rule, *child, status)) {
-            return false;
-        }
-    }
-
-    child = json_find(node, SV("linker"));
-    if (child) {
-        if (!rule_linker_from_json(rule, *child, status, allocator)) {
-            return false;
-        }
-    }
-
-    child = json_find(node, SV("preprocessor"));
-    if (child) {
-        if (!rule_preprocessor_from_json(rule, *child, status, allocator)) {
-            return false;
-        }
-    }
-    return true;
+    file_list_destroy(&arguments->includes);
+    define_list_destroy(&arguments->definitions);
 }
 
-bool rule_list_from_json(rule_list_t *list, json_node_t json, FILE *status, allocator_t *allocator) { 
-    json_array_t array;
-    if (!json_get(json, JSON_ARRAY, &array)) {
-        fputs("Expected a list as the root object.\n", status);
-        return false;
+void linker_arguments_destroy(linker_arguments_t *arguments) {
+    if (!arguments) {
+        return;
     }
-    memset(list, 0, sizeof *list);
-    list->allocator = allocator;
-    for (size_t i = 0; i < array.count; ++i) {
-        rule_t rule = {0};
-        if (!rule_from_json(&rule, array.items[i], status, allocator)) {
-            rule_destroy(&rule);
-            fprintf(status, "When parsing rule at position %zu.\n", i);
-            return false;
-        }
-        rule_list_append(list, rule);
-    }
-    return true;
+    sb_destroy(&arguments->rpath);
+    file_list_destroy(&arguments->directories);
+    file_list_destroy(&arguments->libraries);
 }
+
+void compiler_options_destroy(compiler_options_t *options) {
+    if (!options) {
+        return;
+    }
+    preprocessor_arguments_destroy(&options->preprocessor);
+    linker_arguments_destroy(&options->linker);
+}
+
+void rule_destroy(rule_t *rule) {
+    if (!rule) {
+        return;
+    }
+
+    file_list_destroy(&rule->input);
+    sb_destroy(&rule->output);
+    dep_list_destroy(&rule->depends);
+    compiler_options_destroy(&rule->options);
+}
+
 
 void build_context_defaults(build_context_t *context, env_t *env, allocator_t *allocator) {
     memset(context, 0, sizeof *context);
@@ -367,16 +106,7 @@ void build_context_defaults(build_context_t *context, env_t *env, allocator_t *a
     context->command_builder.allocator = allocator;
     context->output_directory = SV("out");
     context->compiler = compiler_gcc();
-}
-
-void rule_destroy(rule_t *rule) {
-    
-    if (!rule) {
-        return;
-    }
-
-    auto_free_destroy(rule->allocator);
-    memset(rule, 0, sizeof *rule);
+    context->allocator = allocator;
 }
 
 command_t *run_rule_only(const rule_t *rule, build_context_t *context) {
@@ -522,8 +252,11 @@ bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *co
         sb_append_sv(&output_rel_input, sb_view(&input));
 
         if (cmd_file_exists(output_rel_input.items)) {
-            sb_destroy(&input);
-            rule->input.items[i] = output_rel_input;
+            
+            rule->input.items[i].count = 0;
+            sb_append_sv(&rule->input.items[i], sb_view(&output_rel_input));
+            
+            sb_destroy(&output_rel_input);
             continue;
         }
 

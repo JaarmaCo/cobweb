@@ -15,10 +15,12 @@
         ],
         "output": "test-json",
         "type": "executable",
-        "preprocessor": {
-            "includes": [
-                "src"
-            ]
+        "options": {
+            "preprocessor": {
+                "includes": [
+                    "src"
+                ]
+            }
         },
         "depends": [
             2,
@@ -30,30 +32,36 @@
         "input": "src/json.c",
         "output": "json.o",
         "type": "object",
-        "preprocessor": {
-            "includes": [
-                "src"
-            ]
+        "options": {
+            "preprocessor": {
+                "includes": [
+                    "src"
+                ]
+            }
         }
     },
     {
         "input": "src/json_parse.c",
         "output": "json_parse.o",
         "type": "object",
-        "preprocessor": {
-            "includes": [
-                "src"
-            ]
+        "options": {
+            "preprocessor": {
+                "includes": [
+                    "src"
+                ]
+            }
         }
     },
     {
         "input": "src/json_value_parser.c",
         "output": "json_value_parser.o",
         "type": "object",
-        "preprocessor": {
-            "includes": [
-                "src"
-            ]
+        "options": {
+            "preprocessor": {
+                "includes": [
+                    "src"
+                ]
+            }
         }
     }
 ]
