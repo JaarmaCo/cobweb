@@ -3,27 +3,6 @@
 #include "command_builder.h"
 #include "string_builder.h"
 
-project_generator_context_t project_generator_context(allocator_t *allocator) {
-    project_generator_context_t context = {
-        .allocator = allocator,
-        .indexed_targets = {
-            .allocator = allocator,
-        },
-        .artifact_rules = {
-            .allocator = allocator,
-        },
-        .completed_targets = {
-            .allocator = allocator,
-        },
-        .links = {
-            .allocator = allocator,
-        },
-        .status = stderr,
-        .dependency_depth = 0,
-    };
-    return context;
-}
-
 static void index_build_target(const build_target_t *target, const build_project_t *project,
         project_generator_context_t *context) {
 
