@@ -1,0 +1,383 @@
+// ================================================================================
+// Copyright © 2026 William Jaarma
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the “Software”), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+// ================================================================================
+
+// clang-format off
+
+/**
+ * @file hashset.h
+ *
+ * This is a "templated" C header file containing a flat hashset implementation
+ * that permits parameterization using user defined macros.
+ *
+ * The parameters for this file are:
+ *
+ * - #define TYPE_0 // The hashset structure type (optional)
+ * - #define TYPE_1 // The hashset entry type (optional)
+ * - #define TYPE_2 // The key type (required)
+ * - #define FUNCTION_0(TYPE_1 *) // Hashmap entry destructor (optional)
+ * - #define FUNCTION_1(TYPE_2) // Key type hash function (required)
+ * - #define FUNCTION_2(TYPE_3) // Key type equals function (required)
+ * - #define PREFIX // Prefix to prepend to all generated function (optional)
+ * - #define SUFFIX // Suffix to append to all generated symbols (optional)
+ * - #define C_HEADER // If defined, produces an (unguarded) C-header file
+ * - #define C_SOURCE // If defined, produces a C source file
+ * - #define HEADER_ONLY // If defined, inlines all functions and includes both source and header
+ */
+
+// clang-format on
+
+#if !defined(C_SOURCE) && !defined(C_HEADER) && !defined(HEADER_ONLY)
+#define TYPE_2 int
+#define FUNCTION_1 hash_int
+#define FUNCTION_2(x, y) ((x) == (y))
+#define HEADER_ONLY
+#define SUFFIX _i
+#include "hash.h"
+#endif
+
+#define REQUIRE_TYPE_2
+#define REQUIRE_FUNCTION_1
+#define REQUIRE_FUNCTION_2
+#include "template-def.h"
+
+#if defined(C_HEADER)
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "allocator.h"
+
+#if !defined(TYPE_0)
+#define TYPE_0 M_CAT(hashset, SUFFIX)
+#endif
+
+#if !defined(TYPE_1)
+#define TYPE_1 M_CAT(hashset_entry, SUFFIX)
+#endif
+
+#define TKey TYPE_2
+#define TValue TYPE_3
+
+#define hash_key FUNCTION_1
+#define equals_key FUNCTION_2
+
+#define hashset TYPE_0
+#define hashset_entry TYPE_1
+#define insert M_NAME(insert)
+#define put M_NAME(put)
+#define remove M_NAME(remove)
+#define delete_ M_NAME(delete)
+#define find M_NAME(find)
+#define destroy M_NAME(destroy)
+#define grow M_NAME(grow)
+#define destroy M_NAME(destroy)
+#define probe M_NAME(probe)
+
+#if defined(DEFINE_STRUCT)
+
+typedef struct hashset_entry {
+  TKey key;
+  size_t hash;
+} hashset_entry;
+
+typedef struct hashset {
+  hashset_entry *items;
+  size_t count;
+  size_t capacity;
+  allocator_t *allocator;
+} hashset;
+
+#endif
+
+/**
+ * Free all memory owned by the given hashset.
+ */
+INLINE
+void destroy(hashset *hm);
+
+/**
+ * Probe the hashset.
+ *
+ * @param hm Hashmap to query.
+ * @param hash Hash key to search for.
+ * @param state Iterator state variable pointer.
+ * @param position Out parameter for the current probed position.
+ *
+ * @return false When the iterator loop should break.
+ */
+INLINE
+bool probe(const hashset *hm, size_t hash, size_t *state, size_t *position);
+
+/**
+ * Insert an entry into the hashset.
+ *
+ * @param hm Hasmap to modify.
+ * @param key Key of the entry to insert.
+ *
+ * @return A pointer to the entry, or NULL if the entry existed or on an
+ *         allocation failure.
+ */
+INLINE
+hashset_entry *insert(hashset *hm, TKey key);
+
+/**
+ * Insert or replace an existing entry.
+ *
+ * @param hm Hashmap to modify.
+ * @param key Key to associate with the given value.
+ *
+ * @return A pointer to the new/modified entry, or NULL on allocation failure.
+ */
+INLINE
+hashset_entry *put(hashset *hm, TKey key);
+
+/**
+ * Finds an existing entry in the hashset.
+ *
+ * @param hm Hashmap to seek through.
+ * @param key Key to look for.
+ *
+ * @return A pointer to the located entry, or NULL if no entry was found.
+ */
+INLINE
+hashset_entry *find(const hashset *hm, TKey key);
+
+/**
+ * Remove an existing entry from the hashset.
+ *
+ * @param hm Hashmap to remove an entry from.
+ * @param entry Pointer to the entry to remove.
+ */
+INLINE
+void remove(hashset *hm, hashset_entry *entry);
+
+/**
+ * Delete an entry from the hashset.
+ *
+ * @param hm Hashmap to modify.
+ * @param key Key of the element to delete.
+ *
+ * @return true if the element was deleted, false if no such element exists in
+ *         the map.
+ */
+INLINE
+bool delete_(hashset *hm, TKey key);
+
+#endif
+
+#if defined(C_SOURCE)
+
+#include <assert.h>
+#include <string.h>
+
+INLINE
+void destroy(hashset *hm) {
+  if (!hm || !hm->items) {
+    return;
+  }
+
+#if defined(FUNCTION_0)
+  for (size_t i = 0; i < hm->capacity; ++i) {
+    if (hm->items[i].hash != 0) {
+      FUNCTION_0(&hm->items[i]);
+    }
+  }
+#endif
+
+  allocator_release(hm->allocator, hm->items,
+                    hm->capacity * sizeof(hashset_entry),
+                    _Alignof(hashset_entry));
+  memset(hm, 0, sizeof *hm);
+}
+
+INLINE
+bool grow(hashset *hm) {
+  const size_t DEFAULT_SIZE = 4;
+
+  size_t new_size = hm->capacity == 0 ? DEFAULT_SIZE : hm->capacity * 2;
+  hashset_entry *new_items = allocator_new(
+      hm->allocator, new_size * sizeof(hashset_entry), _Alignof(hashset_entry));
+  if (NULL == new_items) {
+    return false;
+  }
+  memset(new_items, 0, new_size * sizeof(hashset_entry));
+
+  hashset hm_new;
+  hm_new.allocator = hm->allocator;
+  hm_new.items = new_items;
+  hm_new.capacity = new_size;
+  hm_new.count = 0;
+
+  for (size_t i = 0; i < hm->capacity; ++i) {
+    if (hm->items[i].hash == 0) {
+      continue;
+    }
+    insert(&hm_new, hm->items[i].key);
+  }
+
+  allocator_release(hm->allocator, hm->items,
+                    hm->capacity * sizeof(hashset_entry),
+                    _Alignof(hashset_entry));
+  hm->capacity = new_size;
+  hm->items = new_items;
+  return true;
+}
+
+INLINE
+bool probe(const hashset *hm, size_t hash, size_t *state, size_t *position) {
+  size_t i = *state;
+  *position = (hash + (i + i * i) / 2) % hm->capacity;
+  return (*state)++ <= hm->capacity;
+}
+
+INLINE
+hashset_entry *find(const hashset *hm, TKey key) {
+
+  if (hm->count == 0) {
+    return NULL;
+  }
+
+  size_t hash = hash_key(key);
+  hash = hash == 0 ? 1 : hash;
+  
+  size_t i = 0;
+  size_t position = 0;
+  while (probe(hm, hash, &i, &position)) {
+    if (hm->items[position].hash == 0) {
+      continue;
+    }
+    if (equals_key(key, hm->items[position].key)) {
+      return &hm->items[position];
+    }
+  }
+  return NULL;
+}
+
+INLINE
+hashset_entry *insert(hashset *hm, TKey key) {
+
+  if (hm->count + 1 > hm->capacity) {
+    if (!grow(hm)) {
+      return NULL;
+    }
+  }
+
+  size_t hash = hash_key(key);
+  hash = hash == 0 ? 1 : hash;
+ 
+  size_t position = 0;
+  size_t i = 0;
+
+  while (probe(hm, hash, &i, &position)) {
+    if (equals_key(key, hm->items[position].key)) {
+      return NULL;
+    }
+    if (hm->items[position].hash == 0) {
+      break;
+    }
+  }
+
+  assert(hm->items[position].hash == 0);
+
+  ++hm->count;
+  
+  hm->items[position].hash = hash;
+  hm->items[position].key = key;
+
+  return &hm->items[position];
+}
+
+INLINE
+hashset_entry *put(hashset *hm, TKey key) {
+
+  if (hm->count + 1 > hm->capacity) {
+    if (!grow(hm)) {
+      return NULL;
+    }
+  }
+
+  size_t hash = hash_key(key);
+  hash = hash == 0 ? 1 : hash;
+  
+  size_t position = 0;
+  size_t i = 0;
+
+  while (probe(hm, hash, &i, &position)) {
+    if (hm->items[position].hash == 0) {
+      break;
+    }
+    if (equals_key(key, hm->items[position].key)) {
+      break;
+    }
+  }
+
+  assert(hm->items[position].hash == 0 || 
+        equals_key(key, hm->items[position].key));
+
+  if (hm->items[position].hash == 0) {
+    ++hm->count;
+  }
+
+  hm->items[position].hash = hash;
+  hm->items[position].key = key;
+
+  return &hm->items[position];
+}
+
+INLINE
+void remove(hashset *hm, hashset_entry *entry) {
+  assert(entry - hm->items > 0 && (size_t)(entry - hm->items) < hm->capacity);
+  entry->hash = 0;
+#ifdef FUNCTION_0
+  FUNCTION_0(entry);
+#endif
+  --hm->count;
+}
+
+INLINE
+bool delete_(hashset *hm, TKey key) {
+  hashset_entry *entry = find(hm, key);
+  if (NULL == entry) {
+    return false;
+  }
+  remove(hm, entry);
+  return true;
+}
+
+#endif
+
+#undef TKey
+#undef TValue
+#undef hash_key
+#undef equals_key
+#undef hashset
+#undef hashset_entry
+#undef insert
+#undef put
+#undef remove
+#undef delete_
+#undef find
+#undef destroy
+#undef grow
+#undef destroy
+#undef probe
+#include "template-undef.h"

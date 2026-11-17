@@ -22,6 +22,7 @@
 
 #include <limits.h>
 
+#include "hash.h"
 #include "rule.h"
 #include "compilation.h"
 
@@ -276,6 +277,10 @@ defer:
 
 bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *context) {
 
+    if (index_set_find(&context->built, number)) {
+        return true;
+    }
+
     bool dry_run = NULL != env_find(context->env, SV("DRY"));
 
     if (number == 0 || number > rules->count) {
@@ -358,6 +363,7 @@ skip_validation:
         }
     }
 
+    index_set_insert(&context->built, number);
     --context->dependency_depth;
     return true;
 err:
@@ -404,4 +410,12 @@ err:
 #define FUNCTION_0 rule_destroy
 #include "../dynamic_array.h"
 
-
+#define TYPE_0 index_set_t
+#define TYPE_1 index_set_entry_t
+#define TYPE_2 size_t
+#define PREFIX index_set_
+#define SUFFIX
+#define FUNCTION_1 hash_size
+#define FUNCTION_2(x, y) ((x) == (y))
+#define C_SOURCE
+#include "../hashset.h"

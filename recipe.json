@@ -5,15 +5,34 @@
     "test-directories": [
         "test"
     ],
+    "options": {
+        "preprocessor": {
+            "includes": [
+                "src"
+            ]
+        },
+        "warnings": "strict",
+        "optimization": "off",
+        "switches": [
+            "warnings-as-errors",
+            "emit-debug-symbols",
+            "emit-assembly",
+            "emit-preprocessed",
+            "emit-rule-list"
+        ]
+    },
     "output-directory": "out",
     "targets": [
         {
             "type": "executable",
-            "name": "project",
+            "name": "build",
             "output": "build",
             "output-directory": ".",
             "depends": [
                 "cobweb.build"
+            ],
+            "input": [
+                "build.c"
             ]
         },
         {
@@ -135,22 +154,6 @@
                 "cobweb.strings"
             ]
         }
-    ],
-    "options": {
-        "preprocessor": {
-            "includes": [
-                "src"
-            ]
-        },
-        "warnings": "pedantic",
-        "optimization": "off",
-        "switches": [
-            "warnings-as-errors",
-            "emit-debug-symbols",
-            "emit-assembly",
-            "emit-preprocessed",
-            "emit-rule-list"
-        ]
-    }
+    ] 
 }
 

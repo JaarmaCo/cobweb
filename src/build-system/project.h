@@ -239,6 +239,11 @@ bool build_project_load(build_project_t *project, const char *filename);
 build_target_t *query_build_target(string_view_t name, const build_project_t *project,
         project_generator_context_t *context);
 
+void target_relativize_output(string_builder_t *sb,
+        const build_target_t *target,
+        const build_project_t *project,
+        string_view_t path);
+
 /**
  * Generate a rule list based on the provided project description.
  */

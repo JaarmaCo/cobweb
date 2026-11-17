@@ -43,6 +43,8 @@ typedef struct compiler_options compiler_options_t;
 typedef struct flags_list flags_list_t;
 typedef struct compiler compiler_t;
 typedef struct build_context build_context_t;
+typedef struct index_set index_set_t;
+typedef struct index_set_entry index_set_entry_t;
 
 typedef unsigned int compiler_switches_t;
 
@@ -298,6 +300,18 @@ struct rule_list {
     allocator_t *allocator;
 };
 
+struct index_set_entry {
+    size_t hash;
+    size_t key;
+};
+
+struct index_set {
+    size_t count;
+    size_t capacity;
+    index_set_entry_t *items;
+    allocator_t *allocator;
+};
+
 /**
  * Callback that translates build-rules into executable commands.
  *
@@ -342,6 +356,11 @@ struct build_context {
      * up to that many jobs in parallel.
      */
     int concurreny;
+
+    /**
+     * Set of already built items.
+     */
+    index_set_t built;
 
     /**
      * Directory where outputs and intermediate files are placed.
@@ -548,6 +567,16 @@ json_node_t rule_list_to_json(const rule_list_t *value, json_pool_t *pool);
 #define SUFFIX
 #define C_HEADER
 #include "../dynamic_array.h"
+
+#define TYPE_0 index_set_t
+#define TYPE_1 index_set_entry_t
+#define TYPE_2 size_t
+#define PREFIX index_set_
+#define SUFFIX
+#define FUNCTION_1 hash_size
+#define FUNCTION_2(x, y) ((x) == (y))
+#define C_HEADER
+#include "../hashset.h"
 
 #define TYPE_0 preprocessor_definition_list_t
 #define TYPE_1 preprocessor_definition_t

@@ -1,185 +1,87 @@
-// ================================================================================
-// Copyright © 2026 William Jaarma
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the “Software”), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-// ================================================================================
+#include <env.h>
+#include <allocator.h>
+#include <command_line.h>
+#include <build-system/project.h>
+#include <build-system/rule.h>
 
-/**
- * @file build.c
- *
- * The following file contains both the source code used to build the C source
- * files in this project. It also serves as an example for how the command
- * builder utility may be used to compile other C projects.
- *
- * Credit to nob.h (https://github.com/tsoding/nob.h) for being the inspiration
- * behind this build utility.
- */
-
-// The UNITY_BUILD option will #include every .c file dependency into this
-// translation unit.
-#define UNITY_BUILD
-#include "command_builder.h"
-#include "command_line.h"
-
-#define OUT_DIR "out/"
-#define SRC_DIR "src/"
-#define TEST_DIR "test/"
-
-// clang-format off
-
-// CC : Defines the compiler to use, is automatically picked up by
-//      CMD_REBUILD_SELF later.
-#define CC "gcc"
-
-// LDFLAGS, CFLAGS : GNU Makefile inspired macro definitions. These
-//                   are also automatically used by CMD_REBUILD_SELF.
-#define LDFLAGS \
-  NULL
-#define CFLAGS  \
-  "-Wall",      \
-  "-Wextra",    \
-  "-Wpedantic", \
-  "-Werror",    \
-  "-ggdb",      \
-  "-Isrc",      \
-  NULL
-
-#define SOURCES \
-  "allocator.c", \
-  "arena_allocator.c", \
-  "auto_free.c", \
-  "command_builder.c", \
-  "env.c", \
-  "format.c", \
-  "json.c", \
-  "json_parse.c", \
-  "json_value_parser.c", \
-  "json_pretty_print.c",\
-  "scratch_allocator.c", \
-  "stream.c", \
-  "string_builder.c", \
-  "string_view.c", \
-  "sv_read.c", \
-  "concurrency/thread.c", \
-  "concurrency/promise.c", \
-  "concurrency/sync.c", \
-  "build-system/rule.c",\
-  "build-system/project.c", \
-  "build-system/project-from-json.c",\
-  "build-system/rule-from-json.c",\
-  "build-system/compilation.c",\
-  NULL
-
-#define TESTS \
-  "dynamic_array.c", \
-  "hashmap.c", \
-  "json.c", \
-  "string_builder.c", \
-  "thread.c", \
-  "promise.c", \
-  "mutex.c", \
-  "condition_variable.c", \
-  "semaphore.c", \
-  "fence.c", \
-  "thread_suspend.c", \
-  "rule.c", \
-  "project.c",\
-  /*"concurrent_linked_queue.c",*/\
-  NULL
-
-// clang-format on
+_Noreturn
+void usage(const char *binary) {
+    fprintf(stderr,
+        "Usage:\n"
+        "  %s\n"
+        "    --help          : Print this message and exit.\n"
+        "    --self          : Rebuild the project file.\n"
+        "    --test          : Build and run all tests.\n"
+        "    --dry-run       : Print commands that would have been run, and then exit.\n"
+        "    --dump-rules    : Print the build rules that would have been run, and then exit.\n"
+        "    --target <name> : Choose a build target to compile and link.\n", binary);
+    exit(0);
+}
 
 int main(int argc, char **argv) {
+    
+    const char *binary = argv[0];
 
-  // Example usage of the cl_* command line parser utilities.
-  //
-  bool run_tests = false;
+    if (argc == 1) {
+        usage(binary);
+    }
 
-  int job_count = 1;
+    env_t env = {.allocator = malloc_allocator};
+    env_inherit_environ(&env);
 
-  while (argc > 0) {
-    string_view_t arg;
-    if (cl_switch("--self", &argc, &argv)) {
-      CMD_REBUILD_SELF();
-    } else if (cl_switch("--test", &argc, &argv)) {
-      run_tests = true;
-    } else if (cl_arg("-j", &arg, &argc, &argv)) {
-      unsigned int value = 1;
-      arg = sv_read_u(arg, &value, 10);
-      if (arg.count != 0) {
-        fprintf(stderr,
-                "Invalid argument for -j parameter, expected <number>\n");
+    bool dump_rules = false;
+    string_view_t target = SV("cobweb");
+    while (argc > 0) {
+        if (cl_switch("--help", &argc, &argv) || cl_switch("-h", &argc, &argv)) {
+            usage(binary); 
+        } else if (cl_switch("--self", &argc, &argv)) {
+            target = SV("project");
+            break;
+        } else if (cl_switch("--test", &argc, &argv)) {
+            fprintf(stderr, "TODO: Tests are not implemented yet.\n");
+            exit(2);
+        } else if (cl_switch("--dry-run", &argc, &argv)) {
+            env_define(&env, SV("DRY"), SV("1"));
+        } else if (cl_switch("--dump-rules", &argc, &argv)) {
+            dump_rules = true;
+        } else if (cl_arg("--target", &target, &argc, &argv)) {
+            continue;
+        } else {
+            cl_shift(&argc, &argv);
+        }
+    }
+
+    build_project_t project = {0};
+    if (!build_project_load(&project, "recipe.json")) {
         exit(1);
-      }
-      job_count = (int)value;
-    } else {
-      cl_shift(&argc, &argv);
     }
-  }
 
-  // Linking this env_t instance to command_builder_t forwards the current shell
-  // environment for later use by the cmd_* commands.
-  //
-  env_t env = {
-      .allocator = malloc_allocator,
-  };
-  env_inherit_environ(&env);
-
-  command_builder_t cc = {
-      .allocator = malloc_allocator,
-      .env = &env,
-  };
-  cmd_echo_to(&cc, stdout);
-  cmd_enable_error_output(&cc);
-
-  if (!cmd_find_executable(&cc, CC)) {
-    fputs(CC " is not a known executable.", stderr);
-    exit(1);
-  }
-  cmd_append_all(&cc, CFLAGS);
-
-  // #if guard lets the build file produce a compilation database at the first
-  // run (I.e the "bootstrap" build).
-#if defined(BOOTSTRAP_BUILD)
-
-  cmd_write_compilation_database(&cc);
-  CMD_REBUILD_SELF();
-
-#else
-
-  cmd_ensure_directory(OUT_DIR);
-  cmd_ensure_directory(OUT_DIR "concurrency/");
-  cmd_ensure_directory(OUT_DIR "build-system/");
-  cmd_ensure_directory(OUT_DIR TEST_DIR);
-
-  cmd_compile(&cc, job_count, SRC_DIR, OUT_DIR, SOURCES);
-  cmd_compile(&cc, job_count, TEST_DIR, OUT_DIR TEST_DIR, TESTS);
-
-  if (run_tests) {
-
-    cmd_append_all(&cc, LDFLAGS);
-
-    const char *tests[] = {TESTS};
-    for (size_t i = 0; tests[i]; ++i) {
-      cmd_run_test(&cc, TEST_DIR, OUT_DIR, tests[i], SOURCES);
+    project_generator_context_t context = project_generator_context(malloc_allocator);
+    build_target_t *build_target = query_build_target(target, &project, &context);
+    if (!build_target) {
+        fprintf(stderr, "Target %.*s does not exist.\n", (int)target.count, target.items);
+        exit(2);
     }
-  }
-  return 0;
-#endif
+
+    rule_list_t rules = {.allocator = malloc_allocator};
+    unsigned int target_index = build_target_emit_rules(build_target, &project, &rules, &context);
+    if (target_index == 0) {
+        exit(1);
+    }
+
+    if (dump_rules) {
+        
+        json_pool_t pool = {.allocator = malloc_allocator};
+        json_pretty_print_with_ansi_highlighting(rule_list_to_json(&rules, &pool), 2, 1, stdout);
+        putchar('\n');
+        exit(0);
+    }
+
+    build_context_t build = {0};
+    build_context_defaults(&build, &env, malloc_allocator); 
+    if (!run_rule(target_index, &rules, &build)) {
+        exit(1);
+    }
+    return 0;
 }
+

@@ -33,6 +33,10 @@ struct gcc_compiler {
 
 static void gcc_apply_options(const rule_t *rule, build_context_t *build) {
     
+    if (rule->type == RULE_STATIC_LIBRARY) {
+        return;
+    }
+
     if (rule->options.switches & COMPILER_EMIT_DEBUG_SYMBOLS) {
         cmd_append(&build->command_builder, "-ggdb");
     }
@@ -74,10 +78,10 @@ static void gcc_apply_options(const rule_t *rule, build_context_t *build) {
         cmd_append_all(&build->command_builder, "-Wall", "-Wextra", NULL);
         break;
     case COMPILER_WARNINGS_STRICT:
-        cmd_append_all(&build->command_builder, "-Wall", "-Wextra", "-Wconversion", NULL);
+        cmd_append_all(&build->command_builder, "-Wall", "-Wextra", "-Wpedantic", NULL);
         break;
     case COMPILER_WARNINGS_PEDANTIC:
-        cmd_append_all(&build->command_builder, "-Wall", "-Wextra", "-Wconversion", "-Wpedantic", NULL);
+        cmd_append_all(&build->command_builder, "-Wall", "-Wextra", "-Wpedantic", "-Wconversion", NULL);
         break;
     }
 
@@ -125,16 +129,21 @@ static void gcc_apply_options(const rule_t *rule, build_context_t *build) {
     }
 }
 
-static void gcc_set_output(string_view_t output, build_context_t *build) {
+static void gcc_set_output(const rule_t *rule, build_context_t *build) {
 
+    string_view_t output = sb_view(&rule->output);
+    string_view_t output_directory = rule->output_directory.count != 0
+        ? sb_view(&rule->output_directory) : build->output_directory;
     string_builder_t opath = {.allocator = build->command_builder.allocator};
-    sb_append_sv(&opath, build->output_directory);
+    sb_append_sv(&opath, output_directory);
     if (!sv_ends_with_char(sb_view(&opath), '/')) {
         sb_append_char(&opath, '/');
     }
     sb_append_sv(&opath, output);
 
-    cmd_append(&build->command_builder, "-o");
+    if (rule->type != RULE_STATIC_LIBRARY) {
+        cmd_append(&build->command_builder, "-o");
+    }
     cmd_append_sv(&build->command_builder, sb_view(&opath));
 
     sb_destroy(&opath);
@@ -161,23 +170,18 @@ static command_t *compile_gcc(const rule_t *rule, build_context_t *build, void *
         break;
     case RULE_DYNAMIC_LIBRARY:
         cmd_clone(&build->command_builder, &gcc_compiler.cc);
-        cmd_append(&build->command_builder, "-dynamic"); 
+        cmd_append(&build->command_builder, "-shared"); 
         break;
     case RULE_STATIC_LIBRARY:
         cmd_clone(&build->command_builder, &gcc_compiler.ar);
-        cmd_append_sv(&build->command_builder, SV("rcs"));
-        cmd_append_sv(&build->command_builder, sb_view(&rule->output));
-        for (size_t i = 0; i < rule->input.count; ++i) {
-            cmd_append_sv(&build->command_builder, sb_view(&rule->input.items[i]));
-        }
-        goto run;
+        cmd_append_sv(&build->command_builder, SV("rcs")); 
+        break;
     } 
 
     gcc_apply_options(rule, build);
-    gcc_set_output(sb_view(&rule->output), build);
+    gcc_set_output(rule, build);
     gcc_set_inputs(rule, build); 
 
-run:
     if (env_find(build->env, SV("DRY"))) {
         for (size_t i = 0; i < build->command_builder.count; ++i) {
             if (i != 0) {

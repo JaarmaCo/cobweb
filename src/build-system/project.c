@@ -29,6 +29,30 @@
 #include "command_builder.h"
 #include "string_builder.h"
 
+void target_relativize_output(string_builder_t *sb,
+        const build_target_t *target,
+        const build_project_t *project,
+        string_view_t path) {
+    
+    sb->count = 0;
+    
+    string_view_t dir = {0};
+    if (target->output_directory.count != 0) {
+        dir = sb_view(&target->output_directory);
+    } else if (project->output_directory.count != 0) {
+        dir = sb_view(&project->output_directory);
+    }
+
+    if (dir.count != 0) {
+
+        sb_append_sv(sb, dir);
+        if (!sv_ends_with_char(dir, '/')) {
+            sb_append_char(sb, '/');
+        }
+    }
+    sb_append_sv(sb, path);
+}
+
 static void index_build_target(const build_target_t *target, const build_project_t *project,
         project_generator_context_t *context) {
 
@@ -318,7 +342,8 @@ static bool process_dependency(const string_builder_t *dep_name,
 
         {
             string_builder_t sb = {.allocator = args->context->allocator};
-            sb_append_sv(&sb, sb_view(&dep_target->output));
+            target_relativize_output(&sb, dep_target,
+                    args->project, sb_view(&dep_target->output));
             file_list_append(args->dep_files, sb);
         }
         break;
@@ -326,7 +351,8 @@ static bool process_dependency(const string_builder_t *dep_name,
 
         // TODO: Configure linker directories and rpath with the dependency ouput paths
         string_builder_t sb = {.allocator = args->context->allocator};
-        sb_append_sv(&sb, sb_view(&dep_target->output));
+        target_relativize_output(&sb, dep_target,
+                    args->project, sb_view(&dep_target->output));
         file_list_append(&args->dep_options->linker.libraries, sb);    
     }
         break;
@@ -503,8 +529,8 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
             unsigned int dep_index = local_dep_list.items[i];
             rule_t *dep = &rules->items[dep_index - 1];
             
-            string_builder_t file = {.allocator = context->allocator};
-            sb_append_sv(&file, sb_view(&dep->output));
+            string_builder_t file = {.allocator = context->allocator}; 
+            target_relativize_output(&file, target, project, sb_view(&dep->output));
             file_list_append(&rule.input, file);
         }
 
