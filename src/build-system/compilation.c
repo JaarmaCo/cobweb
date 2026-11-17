@@ -165,17 +165,29 @@ static command_t *compile_gcc(const rule_t *rule, build_context_t *build, void *
         break;
     case RULE_STATIC_LIBRARY:
         cmd_clone(&build->command_builder, &gcc_compiler.ar);
+        cmd_append_sv(&build->command_builder, SV("rcs"));
         cmd_append_sv(&build->command_builder, sb_view(&rule->output));
         for (size_t i = 0; i < rule->input.count; ++i) {
             cmd_append_sv(&build->command_builder, sb_view(&rule->input.items[i]));
         }
-        return cmd_exec_async(&build->command_builder);
+        goto run;
     } 
 
     gcc_apply_options(rule, build);
     gcc_set_output(sb_view(&rule->output), build);
     gcc_set_inputs(rule, build); 
 
+run:
+    if (env_find(build->env, SV("DRY"))) {
+        for (size_t i = 0; i < build->command_builder.count; ++i) {
+            if (i != 0) {
+                fputc(' ', build->status);
+            }
+            fputs(build->command_builder.items[i], build->status);
+        }
+        fputc('\n', build->status);
+        return NULL;
+    }
     return cmd_exec_async(&build->command_builder);
 } 
 

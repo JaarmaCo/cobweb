@@ -266,6 +266,7 @@ static bool resolve_input_via_dependencies(rule_t *rule, const rule_list_t *rule
 
 defer:
     if (found) {
+        input->count = 0;
         sb_append_sv(input, sb_view(&output_rel_input));
     }
 
@@ -274,7 +275,9 @@ defer:
 }
 
 bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *context) {
-    
+
+    bool dry_run = NULL != env_find(context->env, SV("DRY"));
+
     if (number == 0 || number > rules->count) {
         fprintf(context->status, "Rule number %u is outside the valid range [1, %u]\n",
                 number, (unsigned int)rules->count);
@@ -310,6 +313,10 @@ bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *co
         }
     }
 
+    if (dry_run) {
+        goto skip_validation;
+    }
+
     for (size_t i = 0; i < rule->input.count; ++i) {
 
         string_builder_t *input = &rule->input.items[i];
@@ -331,19 +338,23 @@ bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *co
 
     cmd_ensure_directory(rule->output_directory.items);
 
+skip_validation:
     {
         command_t *command = run_rule_only(rule, context);
-        if (!command) {
-            goto err;
-        }
 
-        int exit_code = cmd_wait(command);
-        if (exit_code != 0) {
-            fprintf(context->status,
-                    "Failed to produce %.*s, subprocess exited with a nonzero exit code.\n",
-                    (int)rule->output.count,
-                    rule->output.items);
-            goto err;
+        if (!dry_run) {
+            if (!command) {
+                goto err;
+            }
+
+            int exit_code = cmd_wait(command);
+            if (exit_code != 0) {
+                fprintf(context->status,
+                        "Failed to produce %.*s, subprocess exited with a nonzero exit code.\n",
+                        (int)rule->output.count,
+                        rule->output.items);
+                goto err;
+            }
         }
     }
 

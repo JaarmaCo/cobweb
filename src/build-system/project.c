@@ -20,7 +20,11 @@
 // SOFTWARE.
 // ================================================================================
 
+#include <string.h>
+#include <errno.h>
+
 #include "project.h"
+#include "allocator.h"
 #include "build-system/rule.h"
 #include "command_builder.h"
 #include "string_builder.h"
@@ -36,11 +40,12 @@ static void index_build_target(const build_target_t *target, const build_project
     }
 }
 
-static build_target_t *query_build_target(const string_builder_t *name,
+build_target_t *query_build_target(const string_view_t name,
         const build_project_t *project, project_generator_context_t *context) {
 
     // Attempt to locate via indexed name
-    target_dependency_t *existing = target_dependency_map_find(&context->indexed_targets, *name);
+    string_builder_t mock_name = {.items = (char *)name.items, .count = name.count};
+    target_dependency_t *existing = target_dependency_map_find(&context->indexed_targets, mock_name);
     if (existing) {
         assert(existing->value > 0 && existing->value <= project->targets.count);
         return &project->targets.items[existing->value - 1];
@@ -49,7 +54,7 @@ static build_target_t *query_build_target(const string_builder_t *name,
     // Perform slow O(n) search as a fallback
     build_target_t *dep = NULL;
     for (size_t i = 0; i < project->targets.count; ++i) {
-        if (sv_equals(sb_view(name), sb_view(&project->targets.items[i].name))) {
+        if (sv_equals(name, sb_view(&project->targets.items[i].name))) {
             dep = &project->targets.items[i];
 
             // Speed up the next lookup by caching the result
@@ -74,7 +79,7 @@ static unsigned int add_transitive_dependency(const string_builder_t *name,
         const build_target_t *target, const build_project_t *project,
         rule_list_t *rules, project_generator_context_t *context) {
     
-    build_target_t *dep = query_build_target(name, project, context);
+    build_target_t *dep = query_build_target(sb_view(name), project, context);
     if (!dep) {
         fprintf(context->status,
                 "Missing target %.*s required by %.*s.\n",
@@ -247,7 +252,7 @@ static bool add_to_transitive_includes(const build_target_t *target, const build
 
     // Recurse to transitive dependencies
     for (size_t i = 0; i < dep->depends.count; ++i) {
-        const build_target_t *dep_tran = query_build_target(&target->depends.items[i], project, context);
+        const build_target_t *dep_tran = query_build_target(sb_view(&target->depends.items[i]), project, context);
         assert(dep_tran && "Build target should already have been validated. NULL should not be possible.");
 
         ++context->dependency_depth;
@@ -275,7 +280,7 @@ struct process_dependency_args {
 static bool process_dependency(const string_builder_t *dep_name, 
         struct process_dependency_args *args) {
 
-    const build_target_t *dep_target = query_build_target(dep_name, args->project, args->context);
+    const build_target_t *dep_target = query_build_target(sb_view(dep_name), args->project, args->context);
     if (!dep_target) {
         fprintf(args->context->status,
                 "Missing dependency %.*s required by target %.*s.\n",
@@ -382,7 +387,7 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
     // Construct the dependency graph
     for (size_t i = 0; i < target->depends.count; ++i) {
 
-        const build_target_t *dep_target = query_build_target(&target->depends.items[i], project, context);
+        const build_target_t *dep_target = query_build_target(sb_view(&target->depends.items[i]), project, context);
         if (!dep_target) {
             fprintf(stderr,
                     "Missing dependency %.*s required by target %.*s\n",
@@ -527,6 +532,36 @@ bool build_project_emit_rules(const build_project_t *project,
         }
     }
     return true;
+}
+
+bool build_project_load(build_project_t *project, const char *filename) {
+    
+    bool result = false;
+    json_pool_t pool = {0};
+
+    FILE *f = fopen(filename, "r");
+    if (!f) {
+        fprintf(stderr, "Failed: fopen(\"%s\", \"r\") - %s\n",
+                filename, strerror(errno));
+        goto defer;
+    }
+    
+    json_node_t node = json_load(&pool, f);
+    if (!node.node_id) {
+        fprintf(stderr, "Project file is not legal JSON.\n");
+        goto defer;
+    }
+
+    if (!build_project_from_json(project, node, stderr, malloc_allocator)) {
+        goto defer;
+    }
+
+    result = true;
+
+defer:
+    fclose(f);
+    json_destroy_pool(&pool);
+    return result;
 }
 
 void target_compiler_options_destroy(target_compiler_options_t *value) {

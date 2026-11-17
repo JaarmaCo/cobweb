@@ -22,8 +22,12 @@
 
 #include "allocator.h"
 #include "json.h"
+#include "string_builder.h"
 
-static void json_pretty_print_array(json_array_t array, int width, int level, FILE *f) {
+typedef void(*json_pretty_printer_t)(json_node_t, int, int, FILE *);
+typedef void(*json_string_printer_t)(string_view_t, FILE *);
+
+static void json_pretty_print_array(json_array_t array, int width, int level, FILE *f, json_pretty_printer_t printer) {
 
     fputc('[', f);
 
@@ -38,7 +42,7 @@ static void json_pretty_print_array(json_array_t array, int width, int level, FI
             }
         }
 
-        json_pretty_print(array.items[i], width, level + 1, f);
+        printer(array.items[i], width, level + 1, f);
 
         if (i != array.count - 1) {
             fputc(',', f);
@@ -55,9 +59,8 @@ static void json_pretty_print_array(json_array_t array, int width, int level, FI
     fputc(']', f);
 }
 
-static void json_pretty_print_object(json_node_t object, int width, int level, FILE *f) {
-
-    allocator_t *old = scratch_allocator_pop();
+static void json_pretty_print_object(json_node_t object, int width, int level, FILE *f,
+        json_pretty_printer_t printer, json_string_printer_t string_printer) {
     
     fputc('{', f);
 
@@ -65,7 +68,6 @@ static void json_pretty_print_object(json_node_t object, int width, int level, F
     size_t state = 0;
     string_view_t key;
     json_node_t value;
-    string_builder_t sb = {.allocator = scratch_allocator(1024)};
     while (json_iterate_properties(object, &state, &key, &value)) {
        
         if (width > 0) {
@@ -77,11 +79,9 @@ static void json_pretty_print_object(json_node_t object, int width, int level, F
             }
         }
 
-        sb.count = 0;
-        sb_append_string_literal(&sb, key);
-
-        fprintf(f, "%.*s: ", (int)sb.count, sb.items);
-        json_pretty_print(value, width, level + 1, f);
+        string_printer(key, f);
+        fputs(": ", f);
+        printer(value, width, level + 1, f);
     
         if (i != json_count(object) - 1) {
             fputc(',', f);
@@ -97,7 +97,53 @@ static void json_pretty_print_object(json_node_t object, int width, int level, F
     }
 
     fputc('}', f);
+}
+
+void json_pretty_print_string_with_ansi_highlighting(string_view_t str, FILE *f) {
+        
+    allocator_t *old = scratch_allocator_pop();
+
+    string_builder_t sb = {.allocator = scratch_allocator(str.count + 1)};
+    sb_append_string_literal(&sb, str);
+    fprintf(f, "\x1b[32m%.*s\x1b[0m", (int)sb.count, sb.items);
+
     scratch_allocator_restore(old);
+}
+
+void json_pretty_print_with_ansi_highlighting(json_node_t node, int width, int level, FILE *f) {
+    switch (node.type)
+    {
+    case JSON_NULL:
+        fputs("\x1b[34mnull\x1b[0m", f);
+        break;
+    case JSON_TRUE:
+        fputs("\x1b[34mtrue\x1b[0m", f);
+        break;
+    case JSON_FALSE:
+        fputs("\x1b[34mfalse\x1b[0m", f);
+        break;
+    case JSON_STRING: {
+        json_string_t string = json_as_string(node);
+        json_pretty_print_string_with_ansi_highlighting(sb_view(&string), f);
+    }
+        break;
+    case JSON_NUMBER:
+        fprintf(f, "\x1b[33m%Lg\x1b[0m", json_as_number(node));
+        break;
+    case JSON_ARRAY:
+        json_pretty_print_array(json_as_array(node), width, level, f, json_pretty_print_with_ansi_highlighting);
+        break;
+    case JSON_OBJECT:
+        json_pretty_print_object(node, width, level, f, json_pretty_print_with_ansi_highlighting, json_pretty_print_string_with_ansi_highlighting);
+        break;
+    }
+}
+
+void json_pretty_print_string(string_view_t str, FILE *f) {
+    string_builder_t sb = {0};
+    sb_append_string_literal(&sb, str);
+    fputs(sb.items, f);
+    sb_destroy(&sb);
 }
 
 void json_pretty_print(json_node_t node, int width, int level, FILE *f) {
@@ -112,10 +158,10 @@ void json_pretty_print(json_node_t node, int width, int level, FILE *f) {
         json_dumpf(node, f);
         break;
     case JSON_ARRAY:
-        json_pretty_print_array(json_as_array(node), width, level, f);
+        json_pretty_print_array(json_as_array(node), width, level, f, json_pretty_print);
         break;
     case JSON_OBJECT:
-        json_pretty_print_object(node, width, level, f);
+        json_pretty_print_object(node, width, level, f, json_pretty_print, json_pretty_print_string);
         break;
     }
 }

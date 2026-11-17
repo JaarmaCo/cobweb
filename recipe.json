@@ -9,7 +9,8 @@
     "targets": [
         {
             "type": "executable",
-            "name": "build",
+            "name": "project",
+            "output": "build",
             "output-directory": ".",
             "depends": [
                 "cobweb.build"

@@ -231,6 +231,14 @@ static inline project_generator_context_t project_generator_context(allocator_t 
     return context;
 }
 
+bool build_project_load(build_project_t *project, const char *filename);
+
+/**
+ * Look up a build target by searching the project list, or by looking up a cached search.
+ */
+build_target_t *query_build_target(string_view_t name, const build_project_t *project,
+        project_generator_context_t *context);
+
 /**
  * Generate a rule list based on the provided project description.
  */

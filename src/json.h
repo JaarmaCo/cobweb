@@ -744,6 +744,7 @@ void json_remove_range(json_node_t node, size_t index, size_t count);
 char *json_dumps(json_node_t node, string_builder_t *sb);
 void json_dumpf(json_node_t node, FILE *f);
 void json_pretty_print(json_node_t node, int width, int level, FILE *f);
+void json_pretty_print_with_ansi_highlighting(json_node_t node, int width, int level, FILE *f);
 /**
  * @}
  */
