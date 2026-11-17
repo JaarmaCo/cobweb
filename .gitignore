@@ -1,3 +1,6 @@
+*.a
+*.so
+*.o
 xtmemory.kcg*
 out
 test-out
