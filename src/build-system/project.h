@@ -87,6 +87,11 @@ struct build_target {
     file_list_t test_directories;
 
     /**
+     * Directory where output files are placed.
+     */
+    string_builder_t output_directory;
+
+    /**
      * List of target test files.
      */
     file_list_t tests;
@@ -133,6 +138,12 @@ struct build_project {
      * List of targets to build.
      */
     build_target_list_t targets;
+
+    /**
+     * Output directory prefix to use if the target did not
+     * name an output directory.
+     */
+    string_builder_t output_directory;
 };
 
 struct target_dependency {

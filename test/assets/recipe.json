@@ -5,6 +5,7 @@
     "test-directories": [
         "test"
     ],
+    "output-directory": "test-out",
     "targets": [
         {
             "type": "dynamic-library",

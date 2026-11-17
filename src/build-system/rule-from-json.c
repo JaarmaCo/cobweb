@@ -183,6 +183,7 @@ bool rule_from_json(rule_t *value,
             (file_list, input, "input", F),
             (string_builder, output, "output", F),
             (dependency_list, depends, "depends", T),
+            (string_builder, output_directory, "output-directory", T),
             (compiler_options, options, "options", T));
 }
 
@@ -302,6 +303,7 @@ json_node_t rule_to_json(const rule_t *value, json_pool_t *pool) {
             (rule_type, type, "type", F),
             (file_list, input, "input", F),
             (string_builder, output, "output", F),
+            (string_builder, output_directory, "output-directory", T),
             (dependency_list, depends, "depends", T),
             (compiler_options, options, "options", T));
 }

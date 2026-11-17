@@ -112,6 +112,7 @@ void rule_destroy(rule_t *rule) {
 
     file_list_destroy(&rule->input);
     sb_destroy(&rule->output);
+    sb_destroy(&rule->output_directory);
     dep_list_destroy(&rule->depends);
     compiler_options_destroy(&rule->options);
 }
@@ -120,8 +121,6 @@ void rule_destroy(rule_t *rule) {
 void build_context_defaults(build_context_t *context, env_t *env, allocator_t *allocator) {
     memset(context, 0, sizeof *context);
     
-    env_inherit_environ(env);
-
     context->env = env;
     context->status = stderr;
     context->command_builder.env = env;
@@ -161,7 +160,8 @@ command_t *run_rule_async(unsigned int number, const rule_list_t *rules, build_c
 static bool rule_needs_rebuild(const rule_t *rule, build_context_t *context) {
     
     bool result = false;
-    string_view_t output_directory = context->output_directory;
+    string_view_t output_directory = rule->output_directory.count != 0
+        ? sb_view(&rule->output_directory) : context->output_directory;
     string_builder_t output = {.allocator = context->command_builder.allocator};
 
     sb_append_sv(&output, output_directory);
@@ -221,6 +221,58 @@ static bool run_dependencies_concurrently(const rule_t *rule, const rule_list_t 
     return true;
 }
 
+static bool file_exists_given_prefix(string_builder_t *sb, string_view_t prefix, string_view_t filename) {
+    
+    sb->count = 0;
+    sb_append_sv(sb, prefix);
+    if (!sv_ends_with_char(sb_view(sb), '/')) {
+        sb_append_char(sb, '/');
+    }
+    sb_append_sv(sb, filename);
+
+    return cmd_file_exists(sb->items); 
+}
+
+static bool resolve_input_via_dependencies(rule_t *rule, const rule_list_t *rules,
+        build_context_t *context, string_builder_t *input) {
+    
+    bool found = false;
+    string_builder_t output_rel_input = {.allocator = context->command_builder.allocator};
+
+    for (size_t i = 0; i < rule->depends.count; ++i) {
+
+        unsigned int dep_index = rule->depends.items[i];
+        assert(dep_index > 0 && dep_index <= rules->count);
+
+        const rule_t *dep = &rules->items[dep_index - 1];
+
+        if (dep->output_directory.count == 0) {
+            continue;
+        }
+
+        if (file_exists_given_prefix(&output_rel_input,
+                    sb_view(&dep->output_directory),
+                    sb_view(&rule->output))) {
+            found = true;
+            goto defer;
+        }
+    }
+
+    if (file_exists_given_prefix(&output_rel_input,
+                context->output_directory, sb_view(input))) {
+        found = true;
+        goto defer;
+    }
+
+defer:
+    if (found) {
+        sb_append_sv(input, sb_view(&output_rel_input));
+    }
+
+    sb_destroy(&output_rel_input);
+    return found;
+}
+
 bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *context) {
     
     if (number == 0 || number > rules->count) {
@@ -260,40 +312,24 @@ bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *co
 
     for (size_t i = 0; i < rule->input.count; ++i) {
 
-        string_builder_t input = rule->input.items[i];
+        string_builder_t *input = &rule->input.items[i];
 
-        if (cmd_file_exists(input.items)) {
+        if (cmd_file_exists(input->items)) {
             continue;
         }
-        
-        string_builder_t output_rel_input = {.allocator = context->command_builder.allocator};
-        sb_append_sv(&output_rel_input, context->output_directory);
-        if (!sv_ends_with_char(sb_view(&output_rel_input), '/')) {
-            sb_append_char(&output_rel_input, '/');
-        }
-        sb_append_sv(&output_rel_input, sb_view(&input));
-
-        if (cmd_file_exists(output_rel_input.items)) {
-            
-            rule->input.items[i].count = 0;
-            sb_append_sv(&rule->input.items[i], sb_view(&output_rel_input));
-            
-            sb_destroy(&output_rel_input);
+   
+        if (resolve_input_via_dependencies(rule, rules, context, input)) {
             continue;
         }
-
-        sb_destroy(&output_rel_input);
 
         fprintf(context->status,
                 "Missing input file %.*s required by %.*s.\n",
-                (int)rule->input.items[i].count,
-                rule->input.items[i].items,
-                (int)rule->output.count,
-                rule->output.items);
+                (int)input->count, input->items,
+                (int)rule->output.count, rule->output.items);
         goto err;
     }
 
-    cmd_ensure_directory(sv_to_temp_cstr(context->output_directory));
+    cmd_ensure_directory(rule->output_directory.items);
 
     {
         command_t *command = run_rule_only(rule, context);

@@ -430,6 +430,7 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
         rule.options = compiler_options(context->allocator);
         rule.depends.allocator = context->allocator;
         rule.output.allocator = context->allocator;
+        rule.output_directory.allocator = context->allocator;
         
         {
             size_t dot = sv_rfind_char(sb_view(&target->sources.items[i]), '.', 0);
@@ -438,6 +439,12 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
 
             sb_format(&rule.output, "%.*s.o",
                     (int)source_name_base.count, source_name_base.items);
+        }
+
+        if (target->output_directory.count != 0) {
+            sb_append_sv(&rule.output_directory, sb_view(&target->output_directory));
+        } else if (project->output_directory.count != 0) {
+            sb_append_sv(&rule.output_directory, sb_view(&project->output_directory));
         }
 
         file_list_append(&rule.input, source_name);
@@ -458,6 +465,7 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
         rule.options = compiler_options(context->allocator);
         rule.depends.allocator = context->allocator;
         rule.output.allocator = context->allocator;
+        rule.output_directory.allocator = context->allocator;
        
         if (target->output.count != 0) {
             sb_append_sv(&rule.output, sb_view(&target->output));
@@ -469,6 +477,12 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
 
         dep_list_append_range(&rule.depends, dep_list.count, dep_list.items);
         dep_list_append_range(&rule.depends, local_dep_list.count, local_dep_list.items);
+
+        if (target->output_directory.count != 0) {
+            sb_append_sv(&rule.output_directory, sb_view(&target->output_directory));
+        } else if (project->output_directory.count != 0) {
+            sb_append_sv(&rule.output_directory, sb_view(&project->output_directory));
+        }
 
         if (rule_type_is_dynamically_linked(target->type)) {
             for (size_t i = 0; i < dep_files.count; ++i) {
@@ -530,6 +544,7 @@ void build_target_destroy(build_target_t *value) {
     }
     sb_destroy(&value->name);
     sb_destroy(&value->output);
+    sb_destroy(&value->output_directory);
     file_list_destroy(&value->source_directories);
     file_list_destroy(&value->sources);
     file_list_destroy(&value->test_directories);
@@ -542,6 +557,7 @@ void build_project_destroy(build_project_t *value) {
     if (!value) {
         return;
     }
+    sb_destroy(&value->output_directory);
     file_list_destroy(&value->source_directories);
     file_list_destroy(&value->test_directories);
     compiler_options_destroy(&value->options);

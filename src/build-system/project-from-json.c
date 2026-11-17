@@ -56,6 +56,7 @@ bool build_target_from_json(build_target_t *value,
         (file_list, test_directories, "test-directories", T),
         (file_list, tests, "tests", T),
         (file_list, depends, "depends", T),
+        (string_builder, output_directory, "output-directory", T),
         (target_compiler_options, options, "options", T));
 }
 
@@ -71,7 +72,8 @@ bool build_project_from_json(build_project_t *value,
             (file_list, source_directories, "source-directories", T),
             (file_list, test_directories, "test-directories", T),
             (compiler_options, options, "options", T),
-            (build_target_list, targets, "targets", T));
+            (build_target_list, targets, "targets", T),
+            (string_builder, output_directory, "output-directory", T));
 }
 
 json_node_t target_dependency_map_to_json(const target_dependency_map_t *value, json_pool_t *pool) {
@@ -97,6 +99,7 @@ json_node_t build_target_to_json(const build_target_t *value, json_pool_t *pool)
         (file_list, source_directories, "source-directories", T),
         (file_list, sources, "sources", T),
         (file_list, test_directories, "test-directories", T),
+        (string_builder, output_directory, "output-directory", T),
         (file_list, tests, "tests", T),
         (file_list, depends, "depends", T),
         (target_compiler_options, options, "options", T));
@@ -110,6 +113,7 @@ json_node_t build_project_to_json(const build_project_t *value, json_pool_t *poo
     JSON_OBJECT_TO_JSON_IMPLEMENTATION(
             (file_list, source_directories, "source-directories", T),
             (file_list, test_directories, "test-directories", T),
+            (string_builder, output_directory, "output-directory", T),
             (compiler_options, options, "options", T),
             (build_target_list, targets, "targets", T));
 }

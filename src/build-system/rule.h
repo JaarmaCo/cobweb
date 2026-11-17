@@ -273,6 +273,11 @@ struct rule {
      * Filename of the artifact this rule produces.
      */
     string_builder_t output;
+    
+    /**
+     * Rule-specific output directory.
+     */
+    string_builder_t output_directory;
 
     /**
      * List of 1-based indices that indicates the rules that need
