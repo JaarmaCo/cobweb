@@ -250,7 +250,7 @@ void target_relativize_output(string_builder_t *sb,
 bool build_project_emit_rules(const build_project_t *project,
         rule_list_t *rules, project_generator_context_t *context);
 
-unsigned int build_target_emit_rules(const build_target_t *target, const build_project_t *project,
+unsigned int build_target_emit_rules(build_target_t *target, const build_project_t *project,
         rule_list_t *rules, project_generator_context_t *context);
 
 void target_compiler_options_destroy(target_compiler_options_t *value);

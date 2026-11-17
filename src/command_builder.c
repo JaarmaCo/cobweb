@@ -178,6 +178,22 @@ void cmd_ensure_directory(const char *dirname) {
   }
 }
 
+void cmd_ensure_directory_recursively(const char *dirname) {
+    
+    string_view_t str = sv_cstr(dirname);
+    size_t pos = 0;
+    for (;;) {
+        size_t next = sv_find_char(str, '/', pos);
+        if (next == SIZE_MAX) {
+            break; 
+        } else {
+            cmd_ensure_directory(sv_to_temp_cstr(sv_take(str, next)));
+        }
+        pos = next + 1;
+    }
+    cmd_ensure_directory(dirname);
+}
+
 void cmd_report_errors(command_builder_t *cmd, int ec, string_view_t message,
                        void *user) {
   (void)ec;

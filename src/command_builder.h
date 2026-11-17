@@ -186,6 +186,7 @@ void cmd_enable_error_output(command_builder_t *cmd);
  * Ensure the provided directory exists.
  */
 void cmd_ensure_directory(const char *dirname);
+void cmd_ensure_directory_recursively(const char *dirname);
 
 /**
  * Find an executable program using the command environment, and assign it as

@@ -361,7 +361,7 @@ bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *co
         goto err;
     }
 
-    cmd_ensure_directory(rule->output_directory.items);
+    cmd_ensure_directory_recursively(rule->output_directory.items);
 
 skip_validation:
     {

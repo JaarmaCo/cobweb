@@ -50,6 +50,7 @@ void target_relativize_output(string_builder_t *sb,
             sb_append_char(sb, '/');
         }
     }
+
     sb_append_sv(sb, path);
 }
 
@@ -362,7 +363,7 @@ static void target_mark_as_completed(const build_target_t *target,
     target_dependency_map_insert(&context->completed_targets, tname, index);
 }
 
-unsigned int build_target_emit_rules(const build_target_t *target, const build_project_t *project,
+unsigned int build_target_emit_rules(build_target_t *target, const build_project_t *project,
         rule_list_t *rules, project_generator_context_t *context) {
 
     unsigned int index = 0;
@@ -382,6 +383,16 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
     if (context->dependency_depth >= RULE_MAX_DEPENDENCY_DEPTH) {
         fputs("Maxium dependency depth reached. Possibly a cycle.\n", context->status);
         goto defer;
+    }
+
+    if (target->output_directory.count == 0) {
+        if (project->output_directory.count != 0) {
+            sb_append_sv(&target->output_directory, sb_view(&project->output_directory));
+            if (!sv_ends_with_char(sb_view(&target->output_directory), '/')) {
+                sb_append_char(&target->output_directory, '/');
+            }
+        }
+        sb_append_sv(&target->output_directory, sb_view(&target->name));
     }
 
     {

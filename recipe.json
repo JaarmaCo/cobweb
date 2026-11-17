@@ -26,12 +26,12 @@
         {
             "type": "executable",
             "name": "build",
-            "output": "build",
-            "output-directory": ".",
+            "output": "../build",
+            "output-directory": "out",
             "depends": [
                 "cobweb.build"
             ],
-            "input": [
+            "sources": [
                 "build.c"
             ]
         },
