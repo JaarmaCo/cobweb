@@ -66,7 +66,8 @@
                 "string_builder.c",
                 "string_view.c",
                 "sv_read.c",
-                "format.c"
+                "format.c",
+                "stream.c"
             ],
             "tests": [
                 "string_builder.c"
@@ -95,7 +96,8 @@
             "sources": [
                 "json.c",
                 "json_parse.c",
-                "json_value_parser.c"
+                "json_value_parser.c",
+                "json_pretty_print.c"
             ],
             "depends": [
                 "cobweb.allocators",

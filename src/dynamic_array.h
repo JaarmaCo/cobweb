@@ -366,7 +366,7 @@ T *insert_range(dynamic_array *array, size_t index, size_t count,
   assert(NULL != array);
   assert(array->count <= array->capacity);
   assert(array->capacity == 0 || NULL != array->items);
-  assert(index < array->count);
+  assert(index <= array->count);
   assert(count == 0 || NULL != items);
 
   if (!reserve(array, array->count + count)) {

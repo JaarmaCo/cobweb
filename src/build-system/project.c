@@ -211,8 +211,7 @@ static unsigned int target_define_rule(const build_target_t *target, const rule_
     return index;
 }
 
-// Is dep_name implied through transitive relationships with other dependencies of target
-static bool implied_by_transitive_dependency(const string_builder_t *target_name,
+static bool dependency_already_included(const string_builder_t *target_name,
         const string_builder_t *dep_name,
         project_generator_context_t *context) {
     
@@ -225,8 +224,8 @@ static bool implied_by_transitive_dependency(const string_builder_t *target_name
 
 // Mark dep as an immediate or transitive dependency of target
 // May fail if the recursion reaches RULE_MAX_DEPENDENCY_DEPTH, or if a circular dependency is detected.
-static bool add_to_transitive_includes(const build_target_t *target, const build_target_t *dep,
-        const build_project_t *project, project_generator_context_t *context) {
+static bool add_to_transitive_includes(const build_target_t *target,
+        const build_target_t *dep, project_generator_context_t *context) {
  
     if (context->dependency_depth >= RULE_MAX_DEPENDENCY_DEPTH) {
         fprintf(context->status,
@@ -273,21 +272,6 @@ static bool add_to_transitive_includes(const build_target_t *target, const build
             return true;
         }
     }
-
-    // Recurse to transitive dependencies
-    for (size_t i = 0; i < dep->depends.count; ++i) {
-        const build_target_t *dep_tran = query_build_target(sb_view(&target->depends.items[i]), project, context);
-        assert(dep_tran && "Build target should already have been validated. NULL should not be possible.");
-
-        ++context->dependency_depth;
-        bool result = add_to_transitive_includes(target, dep_tran, project, context);
-        --context->dependency_depth;
-        
-        if (!result) {
-            return false;
-        }
-    }
-
     return true;
 }
 
@@ -304,13 +288,44 @@ struct process_dependency_args {
 static bool process_dependency(const string_builder_t *dep_name, 
         struct process_dependency_args *args) {
 
-    const build_target_t *dep_target = query_build_target(sb_view(dep_name), args->project, args->context);
+    if (args->context->dependency_depth >= RULE_MAX_DEPENDENCY_DEPTH) {
+        fprintf(args->context->status, "Maximum dependency depth reached.\n");
+        return false;
+    }
+
+    build_target_t *dep_target = query_build_target(sb_view(dep_name), args->project, args->context);
     if (!dep_target) {
         fprintf(args->context->status,
                 "Missing dependency %.*s required by target %.*s.\n",
                 (int)dep_name->count, dep_name->items,
                 (int)args->target->name.count, args->target->name.items);
         return false;
+    }
+
+    if (dependency_already_included(&args->target->name, dep_name, args->context)) {
+        return true;
+    }
+
+    add_to_transitive_includes(args->target, dep_target, args->context);
+    
+    for (size_t i = 0; i < dep_target->depends.count; ++i) {
+        string_builder_t *tran_name = &dep_target->depends.items[i];
+
+        build_target_t *tran_dep = query_build_target(sb_view(tran_name), args->project, args->context);
+        if (!tran_dep) {
+            fprintf(args->context->status, "Missing transitive dependency %.*s required by %.*s, required by %.*s\n",
+                    (int)tran_name->count, tran_name->items,
+                    (int)dep_target->name.count, dep_target->name.items,
+                    (int)args->target->name.count, args->target->name.items);
+            return false;
+        }
+
+        ++args->context->dependency_depth;
+        if (!process_dependency(tran_name, args)) {
+            --args->context->dependency_depth;
+            return false;
+        }
+        --args->context->dependency_depth;
     }
 
     unsigned int index = add_transitive_dependency(dep_name, args->target, args->project, args->rules, args->context);
@@ -322,45 +337,20 @@ static bool process_dependency(const string_builder_t *dep_name,
     compiler_options_inherit(args->dep_options, &args->target->options.external, args->context->allocator);
     compiler_options_inherit(args->dep_options, &args->target->options.shared, args->context->allocator);
 
-    switch (dep_target->type)
     {
-    case RULE_OBJECT:
-    case RULE_STATIC_LIBRARY:
-        // Skip if already provided by another dependency
-        for (size_t i = 0; i < args->target->depends.count; ++i) {
-
-            const string_builder_t *other_dep_name = &args->target->depends.items[i];
-
-            if (sv_equals(sb_view(dep_name), sb_view(other_dep_name))) {
-                continue;
-            }
-
-            if (implied_by_transitive_dependency(other_dep_name, dep_name, args->context)) {
-                goto skip_switch;
-            }
-        }
-
-        {
-            string_builder_t sb = {.allocator = args->context->allocator};
+        string_builder_t sb = {.allocator = args->context->allocator};
+        if (dep_target->output.count == 0) {
+            string_builder_t file = {.allocator = args->context->allocator};
+            infer_target_artifact(&file, dep_target);
+            target_relativize_output(&sb, dep_target,
+                    args->project, sb_view(&file));
+            sb_destroy(&file);
+        } else {
             target_relativize_output(&sb, dep_target,
                     args->project, sb_view(&dep_target->output));
-            file_list_append(args->dep_files, sb);
         }
-        break;
-    case RULE_DYNAMIC_LIBRARY: {
-
-        // TODO: Configure linker directories and rpath with the dependency ouput paths
-        string_builder_t sb = {.allocator = args->context->allocator};
-        target_relativize_output(&sb, dep_target,
-                    args->project, sb_view(&dep_target->output));
-        file_list_append(&args->dep_options->linker.libraries, sb);    
+        file_list_insert(args->dep_files, 0, sb);
     }
-        break;
-    default:
-        break;
-    }
-skip_switch:
-
     return true;
 }
 
@@ -409,41 +399,7 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
 
     // Speed up lookup by indexing this target's name
     index_build_target(target, project, context);
-   
-    // Construct the dependency graph
-    for (size_t i = 0; i < target->depends.count; ++i) {
-
-        const build_target_t *dep_target = query_build_target(sb_view(&target->depends.items[i]), project, context);
-        if (!dep_target) {
-            fprintf(stderr,
-                    "Missing dependency %.*s required by target %.*s\n",
-                    (int)target->depends.items[i].count, target->depends.items[i].items,
-                    (int)target->name.count, target->name.items);
-            goto defer;
-        }
-
-        if (!add_to_transitive_includes(target, dep_target, project, context)) {
-            // Circular dependency
-            goto defer;
-        }
-    }
-
-    // Populate datastructures with information from dependencies
-    for (size_t i = 0; i < target->depends.count; ++i) {
-        struct process_dependency_args args = {
-            .dep_list = &dep_list,
-            .dep_files = &dep_files,
-            .dep_options = &dep_options,
-            .context = context,
-            .project = project,
-            .target = target,
-            .rules = rules,
-        };
-        if (!process_dependency(&target->depends.items[i], &args)) {
-            goto defer;
-        }
-    }
-
+ 
     // Add rules for intermediate files
     for (size_t i = 0; i < target->sources.count; ++i) {
         string_builder_t source_name = {.allocator = context->allocator};
@@ -488,6 +444,22 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
         target_define_rule(target, &rule, rules, context);
     }
 
+    // Populate datastructures with information from dependencies
+    for (size_t i = 0; i < target->depends.count; ++i) {
+        struct process_dependency_args args = {
+            .dep_list = &dep_list,
+            .dep_files = &dep_files,
+            .dep_options = &dep_options,
+            .context = context,
+            .project = project,
+            .target = target,
+            .rules = rules,
+        };
+        if (!process_dependency(&target->depends.items[i], &args)) {
+            goto defer;
+        }
+    } 
+
     // Build the final target rule
     {
         rule_t rule = {0};
@@ -515,15 +487,6 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
             sb_append_sv(&rule.output_directory, sb_view(&project->output_directory));
         }
 
-        if (rule_type_is_dynamically_linked(target->type)) {
-            for (size_t i = 0; i < dep_files.count; ++i) {
-
-                string_builder_t file = {.allocator = context->allocator};
-                sb_append_sv(&file, sb_view(&dep_files.items[i]));
-                file_list_append(&rule.input, file);
-            }
-        }
-
         for (size_t i = 0; i < local_dep_list.count; ++i) {
             
             unsigned int dep_index = local_dep_list.items[i];
@@ -532,6 +495,15 @@ unsigned int build_target_emit_rules(const build_target_t *target, const build_p
             string_builder_t file = {.allocator = context->allocator}; 
             target_relativize_output(&file, target, project, sb_view(&dep->output));
             file_list_append(&rule.input, file);
+        }
+
+        if (rule_type_is_dynamically_linked(target->type)) {
+            for (size_t i = 0; i < dep_files.count; ++i) {
+
+                string_builder_t file = {.allocator = context->allocator};
+                sb_append_sv(&file, sb_view(&dep_files.items[i]));
+                file_list_append(&rule.input, file);
+            }
         }
 
         index = target_define_rule(target, &rule, rules, context);

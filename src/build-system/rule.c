@@ -158,9 +158,15 @@ command_t *run_rule_async(unsigned int number, const rule_list_t *rules, build_c
     return cmd_async(run_rule_async_runner, &runner);
 }
 
-static bool rule_needs_rebuild(const rule_t *rule, build_context_t *context) {
+static bool rule_needs_rebuild(const rule_t *rule, const rule_list_t *rules, build_context_t *context) {
     
     bool result = false;
+    
+    if (context->dependency_depth >= RULE_MAX_DEPENDENCY_DEPTH) {
+        result = true;
+        goto defer;
+    }
+
     string_view_t output_directory = rule->output_directory.count != 0
         ? sb_view(&rule->output_directory) : context->output_directory;
     string_builder_t output = {.allocator = context->command_builder.allocator};
@@ -186,6 +192,20 @@ static bool rule_needs_rebuild(const rule_t *rule, build_context_t *context) {
     }
 
 defer:
+    for (size_t i = 0; !result && i < rule->depends.count; ++i) {
+        
+        unsigned int number = rule->depends.items[i];
+        if (number == 0 || number > rules->count) {
+            continue;
+        }
+
+        ++context->dependency_depth;
+        if (rule_needs_rebuild(&rules->items[number - 1], rules, context)) {
+            result = true;
+        }
+        --context->dependency_depth;
+    }
+
     sb_destroy(&output);
     return result;
 }
@@ -294,13 +314,13 @@ bool run_rule(unsigned int number, const rule_list_t *rules, build_context_t *co
         return false;
     }
 
-    rule_t *rule = &rules->items[number - 1];
-    if (!rule_needs_rebuild(rule, context)) {
-        if (rule->type != RULE_OBJECT) {
-            fprintf(context->status, "%.*s is up to date.\n",
-                    (int)rule->output.count,
-                    rule->output.items);
-        }
+    rule_t *rule = &rules->items[number - 1]; 
+    if (!rule_needs_rebuild(rule, rules, context)) {
+        
+        index_set_insert(&context->built, number);
+        fprintf(context->status, "%.*s is up to date.\n",
+                (int)rule->output.count,
+                rule->output.items);
         return true;
     }
 

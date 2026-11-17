@@ -12,6 +12,8 @@ void usage(const char *binary) {
         "    --help          : Print this message and exit.\n"
         "    --self          : Rebuild the project file.\n"
         "    --test          : Build and run all tests.\n"
+        "    --echo          : Echo build commands.\n"
+        "    --list | -l     : List available targets.\n"
         "    --dry-run       : Print commands that would have been run, and then exit.\n"
         "    --dump-rules    : Print the build rules that would have been run, and then exit.\n"
         "    --target <name> : Choose a build target to compile and link.\n", binary);
@@ -29,14 +31,19 @@ int main(int argc, char **argv) {
     env_t env = {.allocator = malloc_allocator};
     env_inherit_environ(&env);
 
+    bool list = false;
     bool dump_rules = false;
     string_view_t target = SV("cobweb");
     while (argc > 0) {
         if (cl_switch("--help", &argc, &argv) || cl_switch("-h", &argc, &argv)) {
             usage(binary); 
-        } else if (cl_switch("--self", &argc, &argv)) {
-            target = SV("project");
+        } else if (cl_switch("--list", &argc, &argv) || cl_switch("-l", &argc, &argv)) {
+            list = true;
             break;
+        } else if (cl_switch("--echo", &argc, &argv)) {
+            env_define(&env, SV("ECHO_BUILD"), SV("1"));
+        } else if (cl_switch("--self", &argc, &argv)) {
+            target = SV("build");
         } else if (cl_switch("--test", &argc, &argv)) {
             fprintf(stderr, "TODO: Tests are not implemented yet.\n");
             exit(2);
@@ -74,6 +81,14 @@ int main(int argc, char **argv) {
         json_pool_t pool = {.allocator = malloc_allocator};
         json_pretty_print_with_ansi_highlighting(rule_list_to_json(&rules, &pool), 2, 1, stdout);
         putchar('\n');
+        exit(0);
+    }
+
+    if (list) {
+        for (size_t i = 0; i < project.targets.count; ++i) {
+            const build_target_t *target = &project.targets.items[i];
+            fprintf(stderr, "%.*s\n", (int)target->name.count, target->name.items);
+        }
         exit(0);
     }
 

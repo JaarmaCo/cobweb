@@ -21,6 +21,7 @@
 // ================================================================================
 
 #include "compilation.h"
+#include "build-system/rule.h"
 #include <stddef.h>
 
 struct gcc_compiler {
@@ -179,10 +180,16 @@ static command_t *compile_gcc(const rule_t *rule, build_context_t *build, void *
     } 
 
     gcc_apply_options(rule, build);
-    gcc_set_output(rule, build);
+    if (rule->type == RULE_STATIC_LIBRARY) {
+        gcc_set_output(rule, build);
+    }
     gcc_set_inputs(rule, build); 
-
-    if (env_find(build->env, SV("DRY"))) {
+    if (rule->type != RULE_STATIC_LIBRARY) {
+        gcc_set_output(rule, build);
+    }
+    
+    bool dry_run = env_find(build->env, SV("DRY"));
+    if (dry_run || env_find(build->env, SV("ECHO_BUILD"))) {
         for (size_t i = 0; i < build->command_builder.count; ++i) {
             if (i != 0) {
                 fputc(' ', build->status);
@@ -190,7 +197,10 @@ static command_t *compile_gcc(const rule_t *rule, build_context_t *build, void *
             fputs(build->command_builder.items[i], build->status);
         }
         fputc('\n', build->status);
-        return NULL;
+
+        if (dry_run) {
+            return NULL;
+        }
     }
     return cmd_exec_async(&build->command_builder);
 } 
