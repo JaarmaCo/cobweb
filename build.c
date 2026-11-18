@@ -14,6 +14,7 @@ void usage(const char *binary) {
         "    --test          : Build and run all tests.\n"
         "    --echo          : Echo build commands.\n"
         "    --list | -l     : List available targets.\n"
+        "    --force | -f    : Run rules even if they are up to date.\n"
         "    --dry-run       : Print commands that would have been run, and then exit.\n"
         "    --dump-rules    : Print the build rules that would have been run, and then exit.\n"
         "    --target <name> : Choose a build target to compile and link.\n", binary);
@@ -42,6 +43,8 @@ int main(int argc, char **argv) {
             break;
         } else if (cl_switch("--echo", &argc, &argv)) {
             env_define(&env, SV("ECHO_BUILD"), SV("1"));
+        } else if (cl_switch("--force", &argc, &argv) || cl_switch("-f", &argc, &argv)) {
+            env_define(&env, SV("FORCE_BUILD"), SV("1"));
         } else if (cl_switch("--self", &argc, &argv)) {
             target = SV("build");
         } else if (cl_switch("--test", &argc, &argv)) {

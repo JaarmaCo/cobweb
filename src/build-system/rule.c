@@ -161,7 +161,11 @@ command_t *run_rule_async(unsigned int number, const rule_list_t *rules, build_c
 static bool rule_needs_rebuild(const rule_t *rule, const rule_list_t *rules, build_context_t *context) {
     
     bool result = false;
-    
+
+    if (env_find(context->env, SV("FORCE_BUILD"))) {
+        return true;
+    }
+
     if (context->dependency_depth >= RULE_MAX_DEPENDENCY_DEPTH) {
         result = true;
         goto defer;
