@@ -13,37 +13,17 @@ it to use `clang`.
 
 ## Building
 
+The C-based build system is a work in progress, and there is currently no user-friendly method to bootstrap the build process. The current
+method for initially compiling the build recipe (E.g "bootstrapping") is to compile using a manual GCC invocation:
 ```sh
-./bootstrap-build
-./build
-./build
+gcc -o build src/*.c src/build-system/*.c
 ```
-
-Since this project uses C source files as build-recipes, the recipe itself has to be compiled before it can be run.
-This can be done by either using the provided `bootstrap-build` executable, or by manually compiling the build recipe.
-
-The `bootstrap-build` file assumes your system has a default C compiler installed named `cc` and will compile the
-build recipe using the following compiler flags:
-
-- `-DBOOTSTRAP_BUILD=1`
-- `-Isrc`
-- `-o build`
-
-`-DBOOTSTRAP_BUILD=1` is optional, but recommended as it helps set up some pre-build actions before the actual build
-starts.
-
-When the build recipe is compiled, run it as `./build`. This will cause the build recipe to configure some initial
-repository state, and then recompile itself.
-
-> [!NOTE]
-> Running `./build` is only required if the `BOOTSTRAP_BUILD` preprocessor symbol was defined in the initial build.
-
-When the build recipe is compiled and configured, running it again will begin the compilation. Optionally, the build
-recipe also supports the following flags:
-
-- `--self` recompiles the build recipe
-- `--test` runs tests after performing the compilation
-- `-j <number>` specify the number of parallel compilation jobs
-
-
+Following this, the build executable is fully capable of recompiling the project (including itself) on it's own. The arguments of this
+executable can be retrieved by running it without any arguments, or by explicitly passing the `--help` flag:
+```sh
+# Either:
+./build
+# Or:
+./build --help
+```
 
