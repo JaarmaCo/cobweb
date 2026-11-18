@@ -250,6 +250,17 @@ void target_relativize_output(string_builder_t *sb,
 bool build_project_emit_rules(const build_project_t *project,
         rule_list_t *rules, project_generator_context_t *context);
 
+/**
+ * Generate test executable targets for the given target (if it defines any)
+ */
+bool build_project_generate_target_target_tests(build_target_t *target,
+        build_project_t *project, project_generator_context_t *context);
+
+/**
+ * Generate test targets for all targets that declare tests.
+ */
+bool build_project_generate_tests(build_project_t *project, project_generator_context_t *context);
+
 unsigned int build_target_emit_rules(build_target_t *target, const build_project_t *project,
         rule_list_t *rules, project_generator_context_t *context);
 
